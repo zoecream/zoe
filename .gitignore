@@ -1,0 +1,4 @@
+platform/bin/*
+platform/lib/*
+business/*/log/*
+business/*/.zoe

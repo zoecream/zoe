@@ -1,0 +1,72 @@
+1 测试步骤:
+1.1 安装unixodbc和openssl
+1.1.1 tar xzvf unixODBC-2.3.2.tar.gz
+1.1.2 configure --prefix=/usr/local/unixodbc
+1.1.3 make && make install
+1.1.4 tar xzvf openssl-1.0.2c.tar.gz
+1.1.5 config --prefix=/usr/local/openssl -shared
+1.1.6 make && make install
+
+1.2 数据库初始化
+1.2.1 cp libmyodbc5a.so /usr/local/lib
+1.2.2 echo "[001]" >> /usr/local/unixodbc/etc/odbc.ini
+1.2.3 cat $BUSINESS/001/dbs/dbs.ini >> /usr/local/unixodbc/etc/odbc.ini
+1.2.4 service mysql start
+1.2.5 mysql -uroot -p (初始状态root密码为空)
+1.2.6 mysql> create database 001data;
+1.2.7 mysql> grant all privileges on 001data.* to 001user@localhost identified by '001pass';
+1.2.8 dbs --create=001_all
+
+1.3 启动服务测试交易
+1.3.1 zoe --boot=001
+1.3.2 emu --server 001_002_5110_0
+1.3.3 emu --client 001_001_M01_0
+
+2 文件作用:
+2.1 ini/bsn.ini : 保存核心参数和杂项(目前有ETC的TermCode/UserCode/MainKey/WorkKey).
+2.2 ini/lnk.ini : 渠道定义.
+                  (原来的"服务渠道"现在叫"客户端渠道"!!!客户端通过客户端渠道调用客户端交易)
+                  (原来的"客户渠道"现在叫"服务端渠道"!!!服务端通过服务端渠道提供服务端交易)
+2.3 ini/trn.ini : 交易定义(目前只定义了交易的超时时间,0表示永不超时).
+2.4 ini/pkn.ini : 报文定义.
+2.5 ini/ret.ini : 返回代码对应的返回状态和返回信息.
+2.6 emu/emu.ini : 模拟报文配置(-001_M01_femuLength_null分别表示不需要使用十六进制打印/001渠道/M01交易/femuLength函数/null参数).
+2.7 emu/emu.c   : 模拟报文处理函数定义.
+2.8 dbs/dbs.ini : 数据库服务配置(目前需要手动追加到/usr/local/unixodbc/etc/odbc.ini中).
+2.9 dbs/dbs.sql : 数据库对象定义(此业务目前有JournalNo/Journal两张表,建议不再使用下划线命名).
+2.10 trn/trn.c  : 业务逻辑(流水表的保存/具体交易).
+2.11 pkg/pkg.c  : 接口规范(报文头处理/PIN码生成/MAC码生成/8583报文打包解包).
+2.12 .zoe       : 服务进程号.
+
+3 接口疑问:
+3.1 无mainkey时用什么生成PIN码?
+3.2 无workkey时用什么生成MAX码?
+
+4 报文解释:
+4.1 请求报文
+00000050|6000900000363900000000000000000000|9DF12BF09C9C9867|5110|00180000000100C0|11372720161121|3132333435363738393031323334|30313331323334353637383930313233|2CAB9A0BDA88F13C
+
+00000050 报文长度(4BYTE/大端/报文头+报文体)
+6000900000363900000000000000000000 报文头(17BYTE)
+9DF12BF09C9C9867 PIN码(MainKey/3DES-ECB/BIN)
+5110 消息类型(BCD)
+00180000000100C0 BIT码(BIN)
+11372720161121 时间(BCD)
+3132333435363738393031323334 TermCode(ASCII)
+30313331323334353637383930313233 UserCode(ASCII)(LLLVAR)
+2CAB9A0BDA88F13C MAC码(WorkKey/3DES-ECB/BIN)
+
+4.2 响应报文
+00000072|6000900000363900000000000000000000|FFFFFFFFFFFFFFFF|5111|E000014000001800|11111120161115|4141|3132333435363738393031323334|30303441414141|3035373132333435363738393031323332616161616161616161616161616161610000000000000000|FFFFFFFFFFFFFFFF
+
+00000072 报文长度(4BYTE/大端/报文头+报文体)
+6000900000363900000000000000000000 报文头(17BYTE)
+FFFFFFFFFFFFFFFF PIN码(MainKey/3DES-ECB/BIN)
+5111 消息类型(BCD)
+E000014000001800 BIT码(BIN)
+11111120161115 时间(BCD)
+4141 应答码(ASCII)
+3132333435363738393031323334 TermCode(ASCII)
+30303441414141 应答码(ASCII)(LLLVAR)
+3035373132333435363738393031323332616161616161616161616161616161610000000000000000 UserCode(ASCII)+密钥类型(ASCII)+密钥(20BYTE)(LLLVAR)
+FFFFFFFFFFFFFFFF MAC码(WorkKey/3DES-ECB/BIN)
