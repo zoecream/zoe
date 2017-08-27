@@ -1,0 +1,87 @@
+# 测试步骤:
+## 安装unixodbc和openssl
+### tar xzvf unixODBC-2.3.2.tar.gz
+### configure --prefix=/usr/local/unixodbc
+### make && make install
+### tar xzvf openssl-1.0.2c.tar.gz
+### config --prefix=/usr/local/openssl -shared
+### make && make install
+
+## 克隆仓库
+### git clone git@github.com:zoecream/zoe.git /home/zoe
+### cat /home/zoe/platform/profile >> ~/.basrc
+### cd /home/zoe/platform && make clean && make
+### cd /home/zoe/business/$business && mkdir log
+### cd /home/zoe/business/$business && make clean && make
+
+## 数据库初始化
+### cp libmyodbc5a.so /usr/local/lib
+### echo "[001]" >> /usr/local/unixodbc/etc/odbc.ini
+### cat $BUSINESS/001/dbs/dbs.ini >> /usr/local/unixodbc/etc/odbc.ini
+### service mysql start
+### mysql -uroot -p (初始状态root密码为空)
+### mysql> create database 001data;
+### mysql> create user '001user'@'localhost' identified by '001pass';
+### mysql> grant all privileges on 001data.* to '001user'@'localhost';
+### mysql> flush privileges;
+###0 dbs --create=001_all
+
+## 启动服务测试交易
+### zoe --boot=001
+### emu --server 001_002_5110_0
+### emu --client 001_001_M01_0
+### zoe --list=001
+### zoe --shut=001
+
+## 常见失败原因
+### odbc没有驱动和配置,数据库没有启动,数据库中没有相应的用户和库表.
+### 从github克隆代码后,没有配置环境变量,没有创建log目录,没有重新编译动态库.
+
+# 文件作用:
+## ini/bsn.ini : 保存核心参数和杂项(目前有ETC的TermCode/UserCode/MainKey/WorkKey).
+## ini/lnk.ini : 渠道定义.
+                  (原来的"服务渠道"现在叫"客户端渠道"!!!客户端通过客户端渠道调用客户端交易)
+                  (原来的"客户渠道"现在叫"服务端渠道"!!!服务端通过服务端渠道提供服务端交易)
+## ini/trn.ini : 交易定义(目前只定义了交易的超时时间,0表示永不超时).
+## ini/pkn.ini : 报文定义.
+## ini/ret.ini : 返回代码对应的返回状态和返回信息.
+## emu/emu.ini : 模拟报文配置(-001_M01_femuLength_null分别表示不需要使用十六进制打印/001渠道/M01交易/femuLength函数/null参数).
+## emu/emu.c   : 模拟报文处理函数定义.
+## dbs/dbs.ini : 数据库服务配置(目前需要手动追加到/usr/local/unixodbc/etc/odbc.ini中).
+## dbs/dbs.sql : 数据库对象定义(此业务目前有JournalNo/Journal两张表,建议不再使用下划线命名).
+## trn/trn.c  : 业务逻辑(流水表的保存/具体交易).
+## pkg/pkg.c  : 接口规范(报文头处理/PIN码生成/MAC码生成/8583报文打包解包).
+## .zoe       : 服务进程号.
+
+# 报文解释:
+## 请求报文
+00000050|6000900000363900000000000000000000|9DF12BF09C9C9867|5110|00180000000100C0|11372720161121|3132333435363738393031323334|30313331323334353637383930313233|2CAB9A0BDA88F13C
+
+00000050 报文长度(4BYTE/大端/报文头+报文体)
+6000900000363900000000000000000000 报文头(17BYTE)
+9DF12BF09C9C9867 PIN码(MainKey/3DES-ECB/BIN)
+5110 消息类型(BCD)
+00180000000100C0 BIT码(BIN)
+11372720161121 时间(BCD)
+3132333435363738393031323334 TermCode(ASCII)
+30313331323334353637383930313233 UserCode(ASCII)(LLLVAR)
+2CAB9A0BDA88F13C MAC码(WorkKey/3DES-ECB/BIN)
+
+## 响应报文
+00000072|6000900000363900000000000000000000|FFFFFFFFFFFFFFFF|5111|E000014000001800|11111120161115|4141|3132333435363738393031323334|30303441414141|3035373132333435363738393031323332616161616161616161616161616161610000000000000000|FFFFFFFFFFFFFFFF
+
+00000072 报文长度(4BYTE/大端/报文头+报文体)
+6000900000363900000000000000000000 报文头(17BYTE)
+FFFFFFFFFFFFFFFF PIN码(MainKey/3DES-ECB/BIN)
+5111 消息类型(BCD)
+E000014000001800 BIT码(BIN)
+11111120161115 时间(BCD)
+4141 应答码(ASCII)
+3132333435363738393031323334 TermCode(ASCII)
+30303441414141 应答码(ASCII)(LLLVAR)
+3035373132333435363738393031323332616161616161616161616161616161610000000000000000 UserCode(ASCII)+密钥类型(ASCII)+密钥(20BYTE)(LLLVAR)
+FFFFFFFFFFFFFFFF MAC码(WorkKey/3DES-ECB/BIN)
+
+# 接口疑问:
+## 无mainkey时用什么生成PIN码?
+## 无workkey时用什么生成MAX码?
