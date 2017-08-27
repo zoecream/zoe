@@ -1,6 +1,1 @@
-libemu.so:emu.c
-	gcc -fPIC -shared $< -o $@ -I$(PLATFORM)/inc
-touch:
-	touch emu.c
-clean:
-	rm libemu.so
+/home/zoe/business/001/makefile

@@ -1,4 +1,8 @@
 platform/bin/*
 platform/lib/*
+business/*/trn/*.so
+business/*/pkg/*.so
+business/*/emu/*.so
 business/*/log/*
+business/.zoe
 business/*/.zoe
