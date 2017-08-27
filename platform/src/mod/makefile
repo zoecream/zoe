@@ -1,1 +1,1 @@
-/home/softscape/zoe/platform/etc/makefile
+/home/zoe/platform/makefile

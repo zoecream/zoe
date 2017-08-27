@@ -21,14 +21,14 @@ EXCEPT+=$(MODSRCPATH)/xml.c
 EXCEPT+=$(UNTSRCPATH)/xml.c
 
 TARGET+=$(patsubst $(MODSRCPATH)/%.c,$(MODLIBPATH)/lib%.a,$(filter-out $(EXCEPT),$(wildcard $(MODSRCPATH)/*.c)))
-TARGET+=$(patsubst $(UNTSRCPATH)/%.c,$(UNTBINPATH)/%,     $(filter-out $(EXCEPT),$(wildcard $(UNTSRCPATH)/*.c)))
-TARGET+=$(patsubst $(INSSRCPATH)/%.c,$(INSBINPATH)/%,     $(filter-out $(EXCEPT),$(wildcard $(INSSRCPATH)/*.c)))
-TARGET+=$(patsubst $(SRVSRCPATH)/%.c,$(SRVBINPATH)/%,     $(filter-out $(EXCEPT),$(wildcard $(SRVSRCPATH)/*.c)))
+TARGET+=$(patsubst $(UNTSRCPATH)/%.c,$(UNTBINPATH)/%,$(filter-out $(EXCEPT),$(wildcard $(UNTSRCPATH)/*.c)))
+TARGET+=$(patsubst $(INSSRCPATH)/%.c,$(INSBINPATH)/%,$(filter-out $(EXCEPT),$(wildcard $(INSSRCPATH)/*.c)))
+TARGET+=$(patsubst $(SRVSRCPATH)/%.c,$(SRVBINPATH)/%,$(filter-out $(EXCEPT),$(wildcard $(SRVSRCPATH)/*.c)))
 
 OPTION?=-O0 -g
 OPTION?=-O3 -DNDEBUG
 
-all:$(TARGET)
+all:mkdir $(TARGET)
 
 $(MODLIBPATH)/liblog.a:$(MODSRCPATH)/log.c\
                        $(MODINCPATH)/log.h
@@ -98,7 +98,7 @@ $(UNTBINPATH)/dbs:$(UNTSRCPATH)/dbs.c\
                   $(MODLIBPATH)/libdbs.a\
                   $(MODLIBPATH)/liblog.a
 	@echo "编译测试[DBS]"
-	gcc $< -o $@ $(OPTION) -I$(MODINCPATH) -L$(MODLIBPATH) -ldbs -llog -L/usr/local/unixodbc/lib64 -lodbc -lpthread
+	gcc $< -o $@ $(OPTION) -I$(MODINCPATH) -L$(MODLIBPATH) -ldbs -llog -L/usr/local/unixodbc/lib -lodbc -lpthread
 
 $(UNTBINPATH)/jsn:$(UNTSRCPATH)/jsn.c\
                   $(MODLIBPATH)/libjsn.a
@@ -122,7 +122,7 @@ $(INSBINPATH)/dbs:$(INSSRCPATH)/dbs.c\
                   $(MODLIBPATH)/liblog.a\
                   $(MODLIBPATH)/libdbs.a
 	@echo "编译工具[DBS]"
-	gcc $< -o $@ $(OPTION) -I$(MODINCPATH) -L$(MODLIBPATH) -llog -ldbs -L/usr/local/unixodbc/lib64 -lodbc -lpthread
+	gcc $< -o $@ $(OPTION) -I$(MODINCPATH) -L$(MODLIBPATH) -llog -ldbs -L/usr/local/unixodbc/lib -lodbc -lpthread
 
 $(SRVBINPATH)/zoe:$(SRVSRCPATH)/zoe.c\
                   $(MODLIBPATH)/liblog.a\
@@ -132,8 +132,13 @@ $(SRVBINPATH)/zoe:$(SRVSRCPATH)/zoe.c\
                   $(MODLIBPATH)/libdbs.a\
                   $(MODLIBPATH)/libjsn.a
 	@echo "编译服务[ZOE]"
-	gcc $< -o $@ $(OPTION) -I$(MODINCPATH) -L$(MODLIBPATH) -llog -lini -lmmp -lpkg -ldbs -ljsn -L/usr/local/openssl/lib -lcrypto -L/usr/local/unixodbc/lib64 -lodbc -lrt -ldl -rdynamic -lpthread
+	gcc $< -o $@ $(OPTION) -I$(MODINCPATH) -L$(MODLIBPATH) -llog -lini -lmmp -lpkg -ldbs -ljsn -L/usr/local/openssl/lib -lcrypto -L/usr/local/unixodbc/lib -lodbc -lrt -ldl -rdynamic -lpthread
 
+mkdir:
+	@mkdir -p $(MODLIBPATH)
+	@mkdir -p $(UNTBINPATH)
+	@mkdir -p $(INSBINPATH)
+	@mkdir -p $(SRVBINPATH)
 touch:
 	touch $(SOURCE)
 clean:
