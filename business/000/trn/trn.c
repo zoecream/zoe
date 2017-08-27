@@ -274,7 +274,7 @@ int ftrnP01(void)
 
 	error=-3;
 	char path[64];
-	sprintf(path,"%s/%s/1.txt",getenv("BUSINESS"),bsncode);
+	sprintf(path,"%s/%s/emu/1.txt",getenv("BUSINESS"),bsncode);
 	FILE *fp;
 	fp=fopen(path,"r");
 	if(fp==NULL)
