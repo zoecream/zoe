@@ -23,8 +23,8 @@
 ### service mysql start
 ### mysql -uroot -p (初始状态root密码为空)
 ### mysql> create database 000data;
-### mysql> create user '000user'@'localhost' identified by '000pass';
-### mysql> grant all privileges on 000data.* to '000user'@'localhost';
+### mysql> create user 000user@localhost identified by '000pass';
+### mysql> grant all privileges on 000data.* to 000user@localhost;
 ### mysql> flush privileges;
 ### dbs --create=000_all
 
