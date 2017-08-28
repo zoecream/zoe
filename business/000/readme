@@ -1,0 +1,58 @@
+# 测试步骤:
+## 安装第三方依赖unixodbc和openssl.
+### tar xzvf unixODBC-2.3.2.tar.gz
+### configure --prefix=/usr/local/unixodbc
+### make && make install
+### tar xzvf openssl-1.0.2c.tar.gz
+### config --prefix=/usr/local/openssl -shared
+### make && make install
+
+## 克隆仓库(建议使用/home/zoe作为根目录),配置环境变量,创建项目目录结构,编译.
+### git clone git@github.com:zoecream/zoe.git /home/zoe
+### cat /home/zoe/platform/profile >> ~/.basrc
+### cd /home/zoe/platform && make
+### cd /home/zoe/business/$business && mkdir log
+### cd /home/zoe/business/$business && make clean
+
+## unixodbc初始化.
+### cp libmyodbc5a.so /usr/local/lib
+### echo "[000]" >> /usr/local/unixodbc/etc/odbc.ini
+### cat $BUSINESS/000/dbs/dbs.ini >> /usr/local/unixodbc/etc/odbc.ini
+
+## 数据库初始化.
+### service mysql start
+### mysql -uroot -p (初始状态root密码为空)
+### mysql> create database 000data;
+### mysql> create user '000user'@'localhost' identified by '000pass';
+### mysql> grant all privileges on 000data.* to '000user'@'localhost';
+### mysql> flush privileges;
+### dbs --create=000_all
+
+## 服务启动/停止/显示.
+### zoe --boot=000
+### zoe --list=000
+### zoe --shut=000
+
+## 测试交易.
+### emu --server 000_002_A01_0
+### emu --client 000_001_P01_0
+
+## 测试常见失败原因.
+### 从github克隆代码后,没有配置环境变量,没有创建项目目录结构(只有log目录),没有重新编译动态库.
+### unixodbc没有驱动和配置,数据库没有启动,数据库中没有相应的用户和库表.
+
+# 文件作用.
+## ini/bsn.ini : 保存核心参数和杂项(目前有ETC的TermCode/UserCode/MainKey/WorkKey).
+## ini/lnk.ini : 渠道定义.
+                 原来的"服务渠道"现在叫"客户端渠道"!!!客户端通过客户端渠道调用客户端交易!!!
+                 原来的"客户渠道"现在叫"服务端渠道"!!!服务端通过服务端渠道提供服务端交易!!!
+## ini/trn.ini : 交易定义(目前只定义了交易的超时时间,0表示永不超时).
+## ini/pkn.ini : 报文定义.
+## ini/ret.ini : 返回代码对应的返回状态和返回信息.
+## emu/emu.ini : 模拟报文配置(-001_M01_femuLength_null分别表示不需要使用十六进制打印/001渠道/M01交易/femuLength函数/null参数).
+## emu/emu.c   : 模拟报文处理函数定义.
+## dbs/dbs.ini : 数据库服务配置(目前需要手动追加到/usr/local/unixodbc/etc/odbc.ini中).
+## dbs/dbs.sql : 数据库对象定义(此业务目前有JournalNo/Journal两张表,建议不再使用下划线命名).
+## trn/trn.c   : 业务逻辑(流水表的保存/具体交易).
+## pkg/pkg.c   : 接口规范(报文头处理/PIN码生成/MAC码生成/8583报文打包解包).
+## .zoe        : 服务进程号.
