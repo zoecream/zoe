@@ -4,5 +4,5 @@ business/*/trn/*.so
 business/*/pkg/*.so
 business/*/emu/*.so
 business/*/log/*
-business/.zoe
-business/*/.zoe
+business/*/.zoelock
+business/*/.zoefifo

@@ -309,26 +309,7 @@ void fzoeBoot(void)
 	if(signal(SIGCHLD,SIG_IGN)==SIG_ERR)
 	{
 		mlogError("signal",errno,strerror(errno),"");
-		exit(-1);
-	}
-
-	char fifopath[64];
-	sprintf(fifopath,"%s/.zoe",getenv("BUSINESS"));
-	result=mkfifo(fifopath,0600);
-	if(result==-1&&errno!=EEXIST)
-	{
-		mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
-		exit(-1);
-	}
-	if(result==-1&&errno==EEXIST)
-	{
-		unlink(fifopath);
-		result=mkfifo(fifopath,0600);
-		if(result==-1)
-		{
-			mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
-			exit(-1);
-		}
+		return;
 	}
 
 	char bsnpath[64];
@@ -339,8 +320,7 @@ void fzoeBoot(void)
 	if(count==-1)
 	{
 		mlogError("scandir",errno,strerror(errno),"[%s]",bsnpath);
-		unlink(fifopath);
-		exit(-1);
+		return;
 	}
 	int i;
 	for(i=0;i<count;i++)
@@ -361,45 +341,42 @@ void fzoeBoot(void)
 		if(result==-1)
 			continue;
 
-		char servicepath[64];
-		sprintf(servicepath,"%s/%s/.zoe",getenv("BUSINESS"),vzoeBsnCode);
-		FILE *servicefp;
-		servicefp=fopen(servicepath,"r");
-		if(servicefp==NULL&&errno!=ENOENT)
-		{
-			mlogError("fopen",errno,strerror(errno),"[%s]",servicepath);
+		char lockpath[64];
+		sprintf(lockpath,"%s/%s/.zoelock",getenv("BUSINESS"),vzoeBsnCode);
+		char fifopath[64];
+		sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),vzoeBsnCode);
+
+		int lockid;
+		lockid=open(lockpath,O_RDONLY,0600);
+		if(lockid==-1&&errno!=ENOENT)
+		{    
+			mlogError("open",errno,strerror(errno),"[%s]",lockpath);
 			continue;
-		}
+		}    
 		else
-		if(servicefp!=NULL)
+		if(lockid!=-1)
 		{
-			char serviceline[5+1];
-			bzero(serviceline,sizeof(serviceline));
-			result=fread(serviceline,1,sizeof(serviceline)-1,servicefp);
-			if(feof(servicefp))
+			char linuxid[5+1];
+			bzero(linuxid,sizeof(linuxid));
+			result=read(lockid,linuxid,sizeof(linuxid)-1);
+			if(result==-1)
 			{
-				fclose(servicefp);
-				unlink(servicepath);
+				mlogError("read",errno,strerror(errno),"");
 				continue;
 			}
-			if(ferror(servicefp))
-			{
-				mlogError("fread",errno,strerror(errno),"");
-				fclose(servicefp);
-				unlink(servicepath);
-				continue;
-			}
-			fclose(servicefp);
-			result=sigqueue(atoi(serviceline),0,(union sigval)0);
+			close(lockid);
+
+			result=sigqueue(atoi(linuxid),0,(union sigval)0);
 			if(result==-1&&errno!=ESRCH)
 			{
-				mlogError("sigqueue",errno,strerror(errno),"[%d]",atoi(serviceline));
+				mlogError("sigqueue",errno,strerror(errno),"[%d]",atoi(linuxid));
 				continue;
 			}
 			else
 			if(result==-1&&errno==ESRCH)
 			{
-				unlink(servicepath);
+				unlink(fifopath);
+				unlink(lockpath);
 			}
 			else
 			if(result==0)
@@ -409,12 +386,53 @@ void fzoeBoot(void)
 			}
 		}
 
+		lockid=open(lockpath,O_CREAT|O_RDWR,0600);
+		if(lockid==-1)
+		{
+			mlogError("open",errno,strerror(errno),"[%s]",lockid);
+			continue;
+		}
+		struct flock lock;
+		bzero(&lock,sizeof(lock));
+		lock.l_whence=SEEK_SET;
+		lock.l_type=F_WRLCK;
+		result=fcntl(lockid,F_SETLK,&lock);
+		if(result==-1&&errno!=EAGAIN)
+		{
+			mlogError("fcntl",errno,strerror(errno),"");
+			close(lockid);
+			continue;
+		}
+		if(result==-1&&errno==EAGAIN)
+		{
+			printf("操作繁忙中\n");
+			close(lockid);
+			continue;
+		}
+
+		result=mkfifo(fifopath,0600);
+		if(result==-1&&errno!=EEXIST)
+		{
+			mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
+			goto unlock;
+		}
+		if(result==-1&&errno==EEXIST)
+		{
+			unlink(fifopath);
+			result=mkfifo(fifopath,0600);
+			if(result==-1)
+			{
+				mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
+				goto unlock;
+			}
+		}
+
 		int pid;
 		pid=fork();
 		if(pid==-1)
 		{
 			mlogError("fork",errno,strerror(errno),"");
-			continue;
+			goto unlock;
 		}
 		else
 		if(pid>0)
@@ -424,7 +442,7 @@ void fzoeBoot(void)
 			if(fifoid==-1)
 			{
 				mlogError("open",errno,strerror(errno),"[%s]",fifopath);
-				continue;
+				goto unlock;
 			}
 			int done;
 			result=read(fifoid,&done,sizeof(done));
@@ -432,7 +450,7 @@ void fzoeBoot(void)
 			{
 				mlogError("read",errno,strerror(errno),"");
 				close(fifoid);
-				continue;
+				goto unlock;
 			}
 			int linuxid;
 			result=read(fifoid,&linuxid,sizeof(linuxid));
@@ -440,7 +458,7 @@ void fzoeBoot(void)
 			{
 				mlogError("read",errno,strerror(errno),"");
 				close(fifoid);
-				continue;
+				goto unlock;
 			}
 			pthread_t posixid;
 			result=read(fifoid,&posixid,sizeof(posixid));
@@ -448,23 +466,20 @@ void fzoeBoot(void)
 			{
 				mlogError("read",errno,strerror(errno),"");
 				close(fifoid);
-				continue;
+				goto unlock;
 			}
 			close(fifoid);
 
 			if(done==0)
 			{
-				char servicepath[64];
-				sprintf(servicepath,"%s/%s/.zoe",getenv("BUSINESS"),vzoeBsnCode);
-				FILE *servicefp;
-				servicefp=fopen(servicepath,"w");
-				if(servicefp==NULL)
+				char id[13+1];
+				sprintf(id,"%05d%08X",linuxid,posixid);
+				result=write(lockid,id,sizeof(id)-1);
+				if(result==-1)
 				{
-					mlogError("fopen",errno,strerror(errno),"[%s]",servicepath);
-					continue;
+					mlogError("write",errno,strerror(errno),"");
+					goto unlock;
 				}
-				fprintf(servicefp,"%05d%X",linuxid,posixid);
-				fclose(servicefp);
 			}
 		}
 		else
@@ -473,9 +488,17 @@ void fzoeBoot(void)
 			free(bsndirent);
 			fzoeManageBoot();
 		}
+
+		unlock:
+		lock.l_type=F_UNLCK;
+		result=fcntl(lockid,F_SETLK,&lock);
+		if(result==-1)
+		{
+			mlogError("fcntl",errno,strerror(errno),"");
+		}
+		close(lockid);
 	}
 
-	unlink(fifopath);
 	return;
 }
 
@@ -488,25 +511,6 @@ void fzoeShut(void)
 {
 	int result;
 
-	char fifopath[64];
-	sprintf(fifopath,"%s/.zoe",getenv("BUSINESS"));
-	result=mkfifo(fifopath,0600);
-	if(result==-1&&errno!=EEXIST)
-	{
-		mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
-		exit(-1);
-	}
-	if(result==-1&&errno==EEXIST)
-	{
-		unlink(fifopath);
-		result=mkfifo(fifopath,0600);
-		if(result==-1)
-		{
-			mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
-			exit(-1);
-		}
-	}
-
 	char bsnpath[64];
 	strcpy(bsnpath,getenv("BUSINESS"));
 	struct dirent **bsndirent;
@@ -515,8 +519,7 @@ void fzoeShut(void)
 	if(count==-1)
 	{
 		mlogError("scandir",errno,strerror(errno),"[%s]",bsnpath);
-		unlink(fifopath);
-		exit(-1);
+		return;
 	}
 	int i;
 	for(i=0;i<count;i++)
@@ -538,48 +541,65 @@ void fzoeShut(void)
 		if(result==-1)
 			continue;
 
-		char servicepath[64];
-		sprintf(servicepath,"%s/%s/.zoe",getenv("BUSINESS"),bsncode);
-		FILE *servicefp;
-		servicefp=fopen(servicepath,"r");
-		if(servicefp==NULL&&errno!=ENOENT)
+		char lockpath[64];
+		sprintf(lockpath,"%s/%s/.zoelock",getenv("BUSINESS"),bsncode);
+		char fifopath[64];
+		sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),bsncode);
+
+		int lockid;
+		lockid=open(lockpath,O_RDWR,0600);
+		if(lockid==-1&&errno!=ENOENT)
 		{
-			mlogError("fopen",errno,strerror(errno),"[%s]",servicepath);
-			unlink(servicepath);
+			mlogError("open",errno,strerror(errno),"[%s]",lockpath);
 			continue;
 		}
 		else
-		if(servicefp==NULL&&errno==ENOENT)
+		if(lockid==-1&&errno==ENOENT)
 		{
 			printf("业务未启动\n");
 			continue;
 		}
 
-		char linuxid[5+1];
-		bzero(linuxid,sizeof(linuxid));
-		result=fread(linuxid,1,sizeof(linuxid)-1,servicefp);
-		if(feof(servicefp))
-		{
-			fclose(servicefp);
-			unlink(servicepath);
+		struct flock lock;
+		bzero(&lock,sizeof(lock));
+		lock.l_whence=SEEK_SET;
+		lock.l_type=F_WRLCK;
+		result=fcntl(lockid,F_SETLK,&lock);
+		if(result==-1&&errno!=EAGAIN)
+		{    
+			mlogError("fcntl",errno,strerror(errno),"");
+			close(lockid);
 			continue;
-		}
-		if(ferror(servicefp))
+		}    
+		if(result==-1&&errno==EAGAIN)
 		{
-			mlogError("fread",errno,strerror(errno),"");
-			fclose(servicefp);
-			unlink(servicepath);
+			printf("操作繁忙中\n");
+			close(lockid);
 			continue;
 		}
 
-		fclose(servicefp);
-		unlink(servicepath);
+		char linuxid[5+1];
+		bzero(linuxid,sizeof(linuxid));
+		result=read(lockid,linuxid,sizeof(linuxid)-1);
+		if(result==-1)
+		{
+			mlogError("read",errno,strerror(errno),"");
+			goto unlock;
+		}
+		char posixid[8+1];
+		bzero(posixid,sizeof(posixid));
+		result=read(lockid,posixid,sizeof(posixid)-1);
+		if(result==-1)
+		{
+			mlogError("read",errno,strerror(errno),"");
+			goto unlock;
+		}
 
 		result=sigqueue(atoi(linuxid),SIGUSR1,(union sigval)0);
 		if(result==-1)
 		{
 			mlogError("sigqueue",errno,strerror(errno),"[%d]",atoi(linuxid));
-			continue;
+			goto unlock;
 		}
 
 		int fifoid;
@@ -587,19 +607,31 @@ void fzoeShut(void)
 		if(fifoid==-1)
 		{
 			mlogError("open",errno,strerror(errno),"[%s]",fifopath);
-			continue;
+			goto unlock;
 		}
+
 		int done;
 		result=read(fifoid,&done,sizeof(done));
 		if(result==-1)
 		{
 			mlogError("read",errno,strerror(errno),"");
-			continue;
+			close(fifoid);
+			goto unlock;
 		}
-		close(fifoid);
+
+		unlock:
+		lock.l_type=F_UNLCK;
+		result=fcntl(lockid,F_SETLK,&lock);
+		if(result==-1)
+		{    
+			mlogError("fcntl",errno,strerror(errno),"");
+		}    
+		close(lockid);
+
+		unlink(fifopath);
+		unlink(lockpath);
 	}
 
-	unlink(fifopath);
 	return;
 }
 
@@ -612,25 +644,6 @@ void fzoeList(void)
 {
 	int result;
 
-	char fifopath[64];
-	sprintf(fifopath,"%s/.zoe",getenv("BUSINESS"));
-	result=mkfifo(fifopath,0600);
-	if(result==-1&&errno!=EEXIST)
-	{
-		mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
-		exit(-1);
-	}
-	if(result==-1&&errno==EEXIST)
-	{
-		unlink(fifopath);
-		result=mkfifo(fifopath,0600);
-		if(result==-1)
-		{
-			mlogError("mkfifo",errno,strerror(errno),"[%s]",fifopath);
-			exit(-1);
-		}
-	}
-
 	char bsnpath[64];
 	strcpy(bsnpath,getenv("BUSINESS"));
 	struct dirent **bsndirent;
@@ -639,8 +652,7 @@ void fzoeList(void)
 	if(count==-1)
 	{
 		mlogError("scandir",errno,strerror(errno),"[%s]",bsnpath);
-		unlink(fifopath);
-		exit(-1);
+		return;
 	}
 	int i;
 	for(i=0;i<count;i++)
@@ -662,52 +674,59 @@ void fzoeList(void)
 		if(result==-1)
 			continue;
 
-		char servicepath[64];
-		sprintf(servicepath,"%s/%s/.zoe",getenv("BUSINESS"),bsncode);
-		FILE *servicefp;
-		servicefp=fopen(servicepath,"r");
-		if(servicefp==NULL&&errno!=ENOENT)
+		char lockpath[64];
+		sprintf(lockpath,"%s/%s/.zoelock",getenv("BUSINESS"),bsncode);
+		char fifopath[64];
+		sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),bsncode);
+
+		int lockid;
+		lockid=open(lockpath,O_RDWR,0600);
+		if(lockid==-1&&errno!=ENOENT)
 		{
-			mlogError("fopen",errno,strerror(errno),"[%s]",servicepath);
+			mlogError("open",errno,strerror(errno),"[%s]",lockpath);
 			continue;
 		}
 		else
-		if(servicefp==NULL&&errno==ENOENT)
+		if(lockid==-1&&errno==ENOENT)
 		{
 			printf("业务未启动\n");
 			continue;
 		}
 
-		char linuxid[5+1];
-		bzero(linuxid,sizeof(linuxid));
-		result=fread(linuxid,1,sizeof(linuxid)-1,servicefp);
-		if(feof(servicefp))
-		{
-			fclose(servicefp);
+		struct flock lock;
+		bzero(&lock,sizeof(lock));
+		lock.l_whence=SEEK_SET;
+		lock.l_type=F_WRLCK;
+		result=fcntl(lockid,F_SETLK,&lock);
+		if(result==-1&&errno!=EAGAIN)
+		{    
+			mlogError("fcntl",errno,strerror(errno),"");
+			close(lockid);
 			continue;
-		}
-		if(ferror(servicefp))
+		}    
+		if(result==-1&&errno==EAGAIN)
 		{
-			mlogError("fread",errno,strerror(errno),"");
-			fclose(servicefp);
-			continue;
-		}
-		char posixid[8+1];
-		bzero(posixid,sizeof(posixid));
-		result=fread(posixid,1,sizeof(posixid)-1,servicefp);
-		if(feof(servicefp))
-		{
-			fclose(servicefp);
-			continue;
-		}
-		if(ferror(servicefp))
-		{
-			mlogError("fread",errno,strerror(errno),"");
-			fclose(servicefp);
+			printf("操作繁忙中\n");
+			close(lockid);
 			continue;
 		}
 
-		fclose(servicefp);
+		char linuxid[5+1];
+		bzero(linuxid,sizeof(linuxid));
+		result=read(lockid,linuxid,sizeof(linuxid)-1);
+		if(result==-1)
+		{
+			mlogError("read",errno,strerror(errno),"");
+			goto unlock;
+		}
+		char posixid[8+1];
+		bzero(posixid,sizeof(posixid));
+		result=read(lockid,posixid,sizeof(posixid)-1);
+		if(result==-1)
+		{
+			mlogError("read",errno,strerror(errno),"");
+			goto unlock;
+		}
 
 		printf("\033[0;31m管理线程[%s][%s]\033[0;37m\n",linuxid,posixid);
 
@@ -715,7 +734,7 @@ void fzoeList(void)
 		if(result==-1)
 		{
 			mlogError("sigqueue",errno,strerror(errno),"[%d]",atoi(linuxid));
-			continue;
+			goto unlock;
 		}
 
 		int fifoid;
@@ -723,7 +742,7 @@ void fzoeList(void)
 		if(fifoid==-1)
 		{
 			mlogError("open",errno,strerror(errno),"[%s]",fifopath);
-			continue;
+			goto unlock;
 		}
 
 		while(1)
@@ -761,21 +780,29 @@ void fzoeList(void)
 			}
 
 			if(status==0X00&&nature==0X7F)
-				printf("\033[0;32m工作线程[%05d][%X]-类型[普通]-状态[空闲]\033[0;37m\n",linuxid,posixid);
+				printf("\033[0;32m工作线程[%05d][%08X]-类型[普通]-状态[空闲]\033[0;37m\n",linuxid,posixid);
 			else
 			if(status==0X01&&nature==0X7F)
-				printf("\033[0;31m工作线程[%05d][%X]-类型[普通]-状态[忙碌]\033[0;37m\n",linuxid,posixid);
+				printf("\033[0;31m工作线程[%05d][%08X]-类型[普通]-状态[忙碌]\033[0;37m\n",linuxid,posixid);
 			else
 			if(status==0X00&&nature!=0X7F)
-				printf("\033[0;32m工作线程[%05d][%X]-类型[批量]-状态[空闲]\033[0;37m\n",linuxid,posixid);
+				printf("\033[0;32m工作线程[%05d][%08X]-类型[批量]-状态[空闲]\033[0;37m\n",linuxid,posixid);
 			else
 			if(status==0X01&&nature!=0X7F)
-				printf("\033[0;31m工作线程[%05d][%X]-类型[批量]-状态[忙碌]\033[0;37m\n",linuxid,posixid);
+				printf("\033[0;31m工作线程[%05d][%08X]-类型[批量]-状态[忙碌]\033[0;37m\n",linuxid,posixid);
 		}
 		close(fifoid);
+
+		unlock:
+		lock.l_type=F_UNLCK;
+		result=fcntl(lockid,F_SETLK,&lock);
+		if(result==-1)
+		{    
+			mlogError("fcntl",errno,strerror(errno),"");
+		}    
+		close(lockid);
 	}
 
-	unlink(fifopath);
 	return;
 }
 
@@ -791,7 +818,7 @@ void fzoeBootHand(int done,int linuxid,pthread_t posixid)
 	int result;
 
 	char fifopath[64];
-	sprintf(fifopath,"%s/.zoe",getenv("BUSINESS"));
+	sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),vzoeBsnCode);
 	int fifoid;
 	fifoid=open(fifopath,O_WRONLY);
 	if(fifoid==-1)
@@ -873,13 +900,13 @@ void fzoeShutHand(int id,siginfo_t *siginfo,void *nothing)
 		result=pthread_join(vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].posixid,NULL);
 		if(result!=0)
 		{
-			mlogError("pthread_join",result,strerror(result),"[%X]",vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].posixid);
+			mlogError("pthread_join",result,strerror(result),"[%08X]",vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].posixid);
 			exit(-1);
 		}
 	}
 
 	char fifopath[64];
-	sprintf(fifopath,"%s/.zoe",getenv("BUSINESS"));
+	sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),vzoeBsnCode);
 	int fifoid;
 	fifoid=open(fifopath,O_WRONLY);
 	if(fifoid==-1)
@@ -914,9 +941,9 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 	int i;
 	int j;
 
-	mlogDebug("1");
+	mlogDebug("a");
 	char fifopath[64];
-	sprintf(fifopath,"%s/.zoe",getenv("BUSINESS"));
+	sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),vzoeBsnCode);
 	int fifoid;
 	fifoid=open(fifopath,O_WRONLY);
 	if(fifoid==-1)
@@ -924,10 +951,10 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 		mlogError("open",errno,strerror(errno),"[%s]",fifopath);
 		return;
 	}
+	mlogDebug("b");
 
 	for(i=0;i<vzoeThrLive;i++)
 	{
-	mlogDebug("2");
 		result=write(fifoid,&vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].linuxid,sizeof(vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].linuxid));
 		if(result==-1)
 		{
@@ -942,7 +969,6 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 			close(fifoid);
 			return;
 		}
-	mlogDebug("3");
 		result=write(fifoid,&vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].nature,sizeof(char));
 		if(result==-1)
 		{
@@ -950,7 +976,6 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 			close(fifoid);
 			return;
 		}
-	mlogDebug("4");
 		result=write(fifoid,&vzoeThrList[(vzoeThrHead+i)%vzoeThrMaxCnt].status,sizeof(char));
 		if(result==-1)
 		{
@@ -1028,15 +1053,6 @@ void fzoeManageBoot(void)
 
 	struct sigaction action;
 	bzero(&action,sizeof(action));
-	/*
-	result=sigfillset(&action.sa_mask);
-	if(result==-1)
-	{
-		mlogError("sigfillset",errno,strerror(errno),"");
-		fzoeBootHand(-1,0,0);
-		exit(-1);
-	}
-	*/
 	action.sa_flags=0;
 	action.sa_flags|=SA_RESTART;
 	action.sa_flags|=SA_SIGINFO;
@@ -1543,7 +1559,7 @@ void fzoeManageBoot(void)
 
 	while(1)
 	{
-		mlogDebug();
+		mlogDebug("%d-%d-%d",epollid,vzoeEvtSize,vzoeLisTime);
 		int count;
 		count=epoll_wait(epollid,events,vzoeEvtSize,vzoeLisTime*1000);
 		mlogDebug("%d",count);
@@ -1587,7 +1603,7 @@ void fzoeManageBoot(void)
 					result=pthread_join(vzoeThrList[vzoeThrHead].posixid,NULL);
 					if(result!=0)
 					{
-						mlogError("pthread_join",result,strerror(result),"[%X]",vzoeThrList[vzoeThrHead].posixid);
+						mlogError("pthread_join",result,strerror(result),"[%08X]",vzoeThrList[vzoeThrHead].posixid);
 						exit(-1);
 					}
 
@@ -1628,50 +1644,56 @@ void fzoeManageBoot(void)
 				vzoeThrBusy+=vzoeThrMinCnt;
 			}
 
-			struct sockaddr_in conaddress;
-			bzero(&conaddress,sizeof(conaddress));
-			int size;
-			size=sizeof(conaddress);
-			int conid;
-			conid=accept(events[i].data.fd/1000,(struct sockaddr*)&conaddress,&size);
-			if(conid==-1)
+			while(1)
 			{
-				mlogError("accept",errno,strerror(errno),"");
-				exit(-1);
-			}
+				struct sockaddr_in conaddress;
+				bzero(&conaddress,sizeof(conaddress));
+				int size;
+				size=sizeof(conaddress);
+				int conid;
+				conid=accept(events[i].data.fd/1000,(struct sockaddr*)&conaddress,&size);
+				if(conid==-1&&errno!=EAGAIN&&errno!=EINTR)
+				{
+					mlogError("accept",errno,strerror(errno),"");
+					exit(-1);
+				}
+				if(conid==-1&&(errno==EAGAIN||errno==EINTR))
+					break;
 
-			result=pthread_mutex_lock(&vzoeMutex);
-			if(result!=0)
-			{
-				mlogError("pthread_mutex_lock",result,strerror(result),"");
-				exit(-1);
-			}
-			if((vzoeTskTail+1)%vzoeTskSize==vzoeTskHead)
-			{
-				result=pthread_cond_wait(&vzoeCondNf,&vzoeMutex);
+				result=pthread_mutex_lock(&vzoeMutex);
 				if(result!=0)
 				{
-					mlogError("pthread_cond_wait",result,strerror(result),"");
+					mlogError("pthread_mutex_lock",result,strerror(result),"");
+					exit(-1);
+				}
+				if((vzoeTskTail+1)%vzoeTskSize==vzoeTskHead)
+				{
+					mlogDebug("%d-%d-%d",vzoeTskTail,vzoeTskSize,vzoeTskHead);
+					result=pthread_cond_wait(&vzoeCondNf,&vzoeMutex);
+					if(result!=0)
+					{
+						mlogError("pthread_cond_wait",result,strerror(result),"");
+						pthread_mutex_unlock(&vzoeMutex);
+						exit(-1);
+					}
+				}
+				sprintf(vzoeTskList[vzoeTskTail].lnkcode,"%03d",events[i].data.fd%1000);
+				vzoeTskList[vzoeTskTail].conid=conid;
+				time(&vzoeTskList[vzoeTskTail].time);
+				vzoeTskTail=(vzoeTskTail+1)%vzoeTskSize;
+				result=pthread_cond_signal(&vzoeCondNe);
+				if(result!=0)
+				{
+					mlogError("pthread_cond_signal",result,strerror(result),"");
 					pthread_mutex_unlock(&vzoeMutex);
 					exit(-1);
 				}
-			}
-			sprintf(vzoeTskList[vzoeTskTail].lnkcode,"%03d",events[i].data.fd%1000);
-			vzoeTskList[vzoeTskTail].conid=conid;
-			time(&vzoeTskList[vzoeTskTail].time);
-			vzoeTskTail=(vzoeTskTail+1)%vzoeTskSize;
-			result=pthread_cond_signal(&vzoeCondNe);
-			if(result!=0)
-			{
-				mlogError("pthread_cond_signal",result,strerror(result),"");
-				pthread_mutex_unlock(&vzoeMutex);
-				exit(-1);
-			}
-			result=pthread_mutex_unlock(&vzoeMutex);
-			if(result!=0)
-			{
-				mlogError("pthread_mutex_unlock",result,strerror(result),"");
-				exit(-1);
+				result=pthread_mutex_unlock(&vzoeMutex);
+				if(result!=0)
+				{
+					mlogError("pthread_mutex_unlock",result,strerror(result),"");
+					exit(-1);
+				}
 			}
 		}
 	}
@@ -1771,31 +1793,6 @@ void *fzoeEmployBoot(void *argument)
 		mlogError("sigaction",errno,strerror(errno),"");
 		exit(-1);
 	}
-	result=sigaction(SIGABRT,&action,NULL);
-	if(result==-1)
-	{
-		mlogError("sigaction",errno,strerror(errno),"");
-		exit(-1);
-	}
-	result=sigaction(SIGILL,&action,NULL);
-	if(result==-1)
-	{
-		mlogError("sigaction",errno,strerror(errno),"");
-		exit(-1);
-	}
-	result=sigaction(SIGBUS,&action,NULL);
-	if(result==-1)
-	{
-		mlogError("sigaction",errno,strerror(errno),"");
-		exit(-1);
-	}
-	result=sigaction(SIGFPE,&action,NULL);
-	if(result==-1)
-	{
-		mlogError("sigaction",errno,strerror(errno),"");
-		exit(-1);
-	}
-
 	result=sigaction(SIGALRM,&action,NULL);
 	if(result==-1)
 	{
@@ -1888,8 +1885,8 @@ void *fzoeEmployBoot(void *argument)
 				goto tag19;
 			flogAnyhow("");
 			flogAnyhow("#[%s]交易开始",flogTime(3));
-			flogAnyhow("#linuxid[%d]",vzoeThrList[index].linuxid);
-			flogAnyhow("#posixid[%X]",vzoeThrList[index].posixid);
+			flogAnyhow("#linuxid[%05d]",vzoeThrList[index].linuxid);
+			flogAnyhow("#posixid[%08X]",vzoeThrList[index].posixid);
 
 			result=fmmpValSet("pBsnCode",0,vzoeBsnCode,0);
 			if(result==-1)
@@ -2397,8 +2394,8 @@ void *fzoeEmployBoot(void *argument)
 				goto tag26;
 			flogAnyhow("");
 			flogAnyhow("#[%s]交易开始",flogTime(3));
-			flogAnyhow("#linuxid[%d]",vzoeThrList[index].linuxid);
-			flogAnyhow("#posixid[%X]",vzoeThrList[index].posixid);
+			flogAnyhow("#linuxid[%05d]",vzoeThrList[index].linuxid);
+			flogAnyhow("#posixid[%08X]",vzoeThrList[index].posixid);
 
 			void *dlhand;
 			dlhand=dlsym(vzoeTrnHandle,"ftrnInit");
