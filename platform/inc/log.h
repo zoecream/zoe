@@ -58,14 +58,14 @@ char *flogDate(int type);
 char *flogTime(int type);
 
 #define mlogDebug(format,argument...)\
-	flogDepend("=DEBUG= [%s][%s]\n=DEBUG= [%s][%d]\n=DEBUG= [%d][%X]\n=DEBUG= "format"\n",\
+	flogDepend("=DEBUG= [%s][%s]\n=DEBUG= [%s][%d]\n=DEBUG= [%05d][%08X]\n=DEBUG= "format"\n",\
 		flogDate(1),flogTime(1),\
 		__FILE__,__LINE__,\
 		syscall(SYS_gettid),pthread_self(),\
 		##argument)
 
 #define mlogError(function,code,info,format,argument...)\
-	flogAnyhow("=ERROR= [%s][%s]\n=ERROR= [%s][%d]\n=ERROR= [%d][%X]\n=ERROR= [%s][%s][%d][%s]\n=ERROR= "format"\n",\
+	flogAnyhow("=ERROR= [%s][%s]\n=ERROR= [%s][%d]\n=ERROR= [%05d][%08X]\n=ERROR= [%s][%s][%d][%s]\n=ERROR= "format"\n",\
 		flogDate(1),flogTime(1),\
 		__FILE__,__LINE__,\
 		syscall(SYS_gettid),pthread_self(),\
