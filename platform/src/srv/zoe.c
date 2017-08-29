@@ -1822,9 +1822,9 @@ void *fzoeEmployBoot(void *argument)
 	if(result!=0)
 	{
 		if(vzoeThrList[index].nature==0X7F)
-			goto tag11;
+			goto tag10ftrnerror;
 		else
-			goto tag21;
+			goto tag20ftrnerror;
 	}
 
 	if(vzoeThrList[index].nature==0X7F)
@@ -1900,7 +1900,7 @@ void *fzoeEmployBoot(void *argument)
 			sprintf(logtmppath,"%s/%s/log/%s-%s-%05d.tmp",getenv("BUSINESS"),vzoeBsnCode,flogDate(0),tsk.lnkcode,vzoeThrList[index].linuxid);
 			result=flogInit(logtmppath);
 			if(result==-1)
-				goto tag19;
+				goto tag18socketclose;
 			flogAnyhow("");
 			flogAnyhow("#[%s]交易开始",flogTime(3));
 			flogAnyhow("#linuxid[%05d]",vzoeThrList[index].linuxid);
@@ -1908,17 +1908,17 @@ void *fzoeEmployBoot(void *argument)
 
 			result=fmmpValSet("pBsnCode",0,vzoeBsnCode,0);
 			if(result==-1)
-				goto tag18;
+				goto tag17flogfree;
 			result=fmmpValSet("pCliLnkCode",0,tsk.lnkcode,0);
 			if(result==-1)
-				goto tag18;
+				goto tag17flogfree;
 
 			void *dlhand;
 			dlhand=dlsym(vzoeTrnHandle,"ftrnInit");
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"");
-				goto tag18;
+				goto tag17flogfree;
 			}
 			if(dlhand!=NULL)
 			{
@@ -1927,7 +1927,7 @@ void *fzoeEmployBoot(void *argument)
 				result=((int(*)(void))dlhand)();
 				flogAnyhow("#[%s]交易前处理结束",flogTime(3));
 				if(result==-1)
-					goto tag18;
+					goto tag17flogfree;
 			}
 
 			struct tzoeLnkInfo *lnk;
@@ -1935,7 +1935,7 @@ void *fzoeEmployBoot(void *argument)
 			if(lnk==NULL)
 			{
 				mlogError("bsearch",0,"0","[%s][%d]",tsk.lnkcode,vzoeLnkCount);
-				goto tag17;
+				goto tag16ftrnfree;
 			}
 
 			if(lnk->lnkrule[0]==0)
@@ -1944,7 +1944,7 @@ void *fzoeEmployBoot(void *argument)
 				if(vzoeSize[index]==-1)
 				{
 					mlogError("read",errno,strerror(errno),"");
-					goto tag17;
+					goto tag16ftrnfree;
 				}
 			}
 			else
@@ -1963,7 +1963,7 @@ void *fzoeEmployBoot(void *argument)
 					if(result==-1&&errno!=EAGAIN)
 					{
 						mlogError("read",errno,strerror(errno),"");
-						goto tag17;
+						goto tag16ftrnfree;
 					}
 					remain-=result;
 					record+=result;
@@ -1975,7 +1975,7 @@ void *fzoeEmployBoot(void *argument)
 				if(result==-1)
 				{
 					mlogError("read",errno,strerror(errno),"");
-					goto tag17;
+					goto tag16ftrnfree;
 				}
 				strncpy(vzoeTmpData[index],vzoeFmlData[index]+lnk->lnkrule[1],lnk->lnkrule[2]);
 				vzoeTmpData[index][lnk->lnkrule[2]]='\0';
@@ -1992,7 +1992,7 @@ void *fzoeEmployBoot(void *argument)
 					if(result==-1&&errno!=EAGAIN)
 					{
 						mlogError("read",errno,strerror(errno),"");
-						goto tag17;
+						goto tag16ftrnfree;
 					}
 					remain-=result;
 					record+=result;
@@ -2003,7 +2003,7 @@ void *fzoeEmployBoot(void *argument)
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"");
-				goto tag17;
+				goto tag16ftrnfree;
 			}
 			if(dlhand!=NULL)
 			{
@@ -2012,12 +2012,12 @@ void *fzoeEmployBoot(void *argument)
 				result=((int(*)(char**,char**,int*,char*))dlhand)(&vzoeFmlData[index],&vzoeTmpData[index],&vzoeSize[index],"client");
 				flogAnyhow("#[%s]报文解码前处理结束",flogTime(3));
 				if(result==-1)
-					goto tag17;
+					goto tag16ftrnfree;
 			}
 
 			result=fmmpRefGet("pCliTrnCode",0,&trncode,0);
 			if(result==-1)
-				goto tag17;
+				goto tag16ftrnfree;
 
 			flogAnyhow("#CliLnkCode[%s]",tsk.lnkcode);
 			flogAnyhow("#CliTrnCode[%s]",trncode);
@@ -2031,7 +2031,7 @@ void *fzoeEmployBoot(void *argument)
 				flogAnyhow("### 交易代码无法识别 ###");
 				trncode="xxx";
 				mlogError("bsearch",0,"0","[%s][%d]",mark,vzoeLnkCount);
-				goto tag17;
+				goto tag16ftrnfree;
 			}
 
 			double diff;
@@ -2039,7 +2039,7 @@ void *fzoeEmployBoot(void *argument)
 			if(trn->trntime!=0&&diff>=trn->trntime)
 			{
 				flogAnyhow("### 交易等待时间超时 ###");
-				goto tag17;
+				goto tag16ftrnfree;
 			}
 
 			it.it_value.tv_sec=trn->trntime==0?0:trn->trntime-diff;
@@ -2047,15 +2047,15 @@ void *fzoeEmployBoot(void *argument)
 			if(result==-1)
 			{
 				mlogError("settime",errno,strerror(errno),"");
-				goto tag13;
+				goto tag12setretsmmp;
 			}
 
 			result=fmmpValSet("pTrnDate",0,flogDate(0),0);
 			if(result==-1)
-				goto tag12;
+				goto tag11timersettime;
 			result=fmmpValSet("pTrnTime",0,flogTime(0),0);
 			if(result==-1)
-				goto tag12;
+				goto tag11timersettime;
 
 			struct sockaddr_in cliaddress;
 			int size;
@@ -2064,7 +2064,7 @@ void *fzoeEmployBoot(void *argument)
 			if(result==-1)
 			{
 				mlogError("getpeername",errno,strerror(errno),"");
-				goto tag12;
+				goto tag11timersettime;
 			}
 
 			char clihost[15+1];
@@ -2072,20 +2072,20 @@ void *fzoeEmployBoot(void *argument)
 			flogAnyhow("#CliHost[%s]",clihost);
 			result=fmmpValSet("pCliHost",0,clihost,0);
 			if(result==-1)
-				goto tag12;
+				goto tag11timersettime;
 			char cliport[5+1];
 			sprintf(cliport,"%d",ntohs(cliaddress.sin_port));
 			flogAnyhow("#CliPort[%s]",cliport);
 			result=fmmpValSet("pCliPort",0,cliport,0);
 			if(result==-1)
-				goto tag12;
+				goto tag11timersettime;
 
 			flogAnyhow("");
 			flogAnyhow("#[%s]报文解码开始",flogTime(3));
 			result=fpkgDec(tsk.lnkcode,trncode,&vzoeFmlData[index],&vzoeTmpData[index],vzoeSize[index]);
 			flogAnyhow("#[%s]报文解码结束",flogTime(3));
 			if(result==-1)
-				goto tag12;
+				goto tag11timersettime;
 
 			flogAnyhow("");
 			flogAnyhow("#[%s]交易流程开始",flogTime(3));
@@ -2095,12 +2095,12 @@ void *fzoeEmployBoot(void *argument)
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"[%s]",trnname);
-				goto tag12;
+				goto tag11timersettime;
 			}
 			if(dlhand!=NULL)
 				error=((int(*)(void))dlhand)();
 
-			tag11:;
+			tag10ftrnerror:;
 			if(error!=0)
 			{
 				flogAnyhow("");
@@ -2110,23 +2110,23 @@ void *fzoeEmployBoot(void *argument)
 				if(dlhand==NULL)
 				{
 					mlogError("dlsym",0,dlerror(),"");
-					goto tag12;
+					goto tag11timersettime;
 				}
 				((void(*)(int))dlhand)(error);
 				flogAnyhow("#[%s]调用错误处理函数结束",flogTime(3));
 			}
 			flogAnyhow("#[%s]交易流程结束",flogTime(3));
 
-			tag12:;
+			tag11timersettime:;
 			it.it_value.tv_sec=0;
 			result=timer_settime(vzoeTime[index*2+0],0,&it,NULL);
 			if(result==-1)
 			{
 				mlogError("settime",errno,strerror(errno),"");
-				goto tag13;
+				goto tag12setretsmmp;
 			}
 
-			tag13:;
+			tag12setretsmmp:;
 			char cliretcode[4+1];
 			char cliretstat[1+1];
 			char cliretinfo[8+1];
@@ -2162,7 +2162,7 @@ void *fzoeEmployBoot(void *argument)
 				if(errfp==NULL)
 				{
 					mlogError("fopen",errno,strerror(errno),"[%s]",errpath);
-					goto tag14;
+					goto tag13fpkgenc;
 				}
 				while(1)
 				{
@@ -2171,7 +2171,7 @@ void *fzoeEmployBoot(void *argument)
 					if(ferror(errfp))
 					{
 						mlogError("fgets",errno,strerror(errno),"");
-						goto tag14;
+						goto tag13fpkgenc;
 					}
 					if(feof(errfp))
 					{
@@ -2223,20 +2223,20 @@ void *fzoeEmployBoot(void *argument)
 			flogAnyhow("#CliRetStat[%s]",cliretstat);
 			flogAnyhow("#CliRetInfo[%s]",cliretinfo);
 
-			tag14:;
+			tag13fpkgenc:;
 			flogAnyhow("");
 			flogAnyhow("#[%s]报文编码开始",flogTime(3));
 			result=fpkgEnc(tsk.lnkcode,trncode,&vzoeFmlData[index],&vzoeTmpData[index],&vzoeSize[index]);
 			flogAnyhow("#[%s]报文编码结束",flogTime(3));
 			if(result==-1)
-				goto tag15;
+				goto tag14fpkgfree;
 
-			tag15:;
+			tag14fpkgfree:;
 			dlhand=dlsym(vzoePkgHandle,"fpkgFree");
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"");
-				goto tag16;
+				goto tag15socketwrite;
 			}
 			if(dlhand!=NULL)
 			{
@@ -2245,10 +2245,10 @@ void *fzoeEmployBoot(void *argument)
 				result=((int(*)(char**,char**,int*,char*))dlhand)(&vzoeFmlData[index],&vzoeTmpData[index],&vzoeSize[index],"client");
 				flogAnyhow("#[%s]报文编码后处理结束",flogTime(3));
 				if(result==-1)
-					goto tag16;
+					goto tag15socketwrite;
 			}
 
-			tag16:;
+			tag15socketwrite:;
 			int remain;
 			remain=vzoeSize[index];
 			int record;
@@ -2259,18 +2259,18 @@ void *fzoeEmployBoot(void *argument)
 				if(result==-1&&errno!=EAGAIN)
 				{
 					mlogError("write",errno,strerror(errno),"");
-					goto tag17;
+					goto tag16ftrnfree;
 				}
 				remain-=result;
 				record+=result;
 			}
 
-			tag17:;
+			tag16ftrnfree:;
 			dlhand=dlsym(vzoeTrnHandle,"ftrnFree");
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"");
-				goto tag18;
+				goto tag17flogfree;
 			}
 			if(dlhand!=NULL)
 			{
@@ -2279,21 +2279,22 @@ void *fzoeEmployBoot(void *argument)
 				result=((int(*)(void))dlhand)();
 				flogAnyhow("#[%s]交易后处理结束",flogTime(3));
 				if(result==-1)
-					goto tag18;
+					goto tag17flogfree;
 			}
 
-			tag18:;
+			tag17flogfree:;
 			flogAnyhow("#[%s]交易结束",flogTime(3));
 			flogAnyhow("****************************************************************");
 			char logfmlpath[64];
 			sprintf(logfmlpath,"%s/%s/log/%s-%s-%s.log",getenv("BUSINESS"),vzoeBsnCode,flogDate(0),tsk.lnkcode,trncode);
 			result=flogFree(logfmlpath,logtmppath);
 			if(result==-1)
-				goto tag19;
+				goto tag18socketclose;
 
-			tag19:;
+			tag18socketclose:;
 			close(tsk.conid);
 
+			tag19setstatus:;
 			vzoeThrList[index].status=0X00;
 		}
 	}
@@ -2399,17 +2400,17 @@ void *fzoeEmployBoot(void *argument)
 			char *lnkcode;
 			result=fmmpRefGet("pCliLnkCode",0,&lnkcode,0);
 			if(result==-1)
-				goto tag26;
+				goto tag29setstatus;
 			char *trncode;
 			result=fmmpRefGet("pCliTrnCode",0,&trncode,0);
 			if(result==-1)
-				goto tag26;
+				goto tag29setstatus;
 
 			char logtmppath[64];
 			sprintf(logtmppath,"%s/%s/log/%s-%s-%05d.tmp",getenv("BUSINESS"),vzoeBsnCode,flogDate(0),lnkcode,vzoeThrList[index].linuxid);
 			result=flogInit(logtmppath);
 			if(result==-1)
-				goto tag26;
+				goto tag29setstatus;
 			flogAnyhow("");
 			flogAnyhow("#[%s]交易开始",flogTime(3));
 			flogAnyhow("#linuxid[%05d]",vzoeThrList[index].linuxid);
@@ -2420,7 +2421,7 @@ void *fzoeEmployBoot(void *argument)
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"");
-				goto tag25;
+				goto tag27flogfree;
 			}
 			if(dlhand!=NULL)
 			{
@@ -2429,7 +2430,7 @@ void *fzoeEmployBoot(void *argument)
 				result=((int(*)(void))dlhand)();
 				flogAnyhow("#[%s]交易前处理结束",flogTime(3));
 				if(result==-1)
-					goto tag25;
+					goto tag27flogfree;
 			}
 
 			flogAnyhow("#CliLnkCode[%s]",lnkcode);
@@ -2442,7 +2443,7 @@ void *fzoeEmployBoot(void *argument)
 			if(trn==NULL)
 			{
 				mlogError("bsearch",0,"0","[%s][%d]",mark,vzoeTrnCount);
-				goto tag25;
+				goto tag27flogfree;
 			}
 
 			it.it_value.tv_sec=trn->trntime;
@@ -2450,15 +2451,15 @@ void *fzoeEmployBoot(void *argument)
 			if(result==-1)
 			{
 				mlogError("settime",errno,strerror(errno),"");
-				goto tag24;
+				goto tag26ftrnfree;
 			}
 
 			result=fmmpValSet("pTrnDate",0,flogDate(0),0);
 			if(result==-1)
-				goto tag22;
+				goto tag21timersettime;
 			result=fmmpValSet("pTrnTime",0,flogTime(0),0);
 			if(result==-1)
-				goto tag22;
+				goto tag21timersettime;
 
 			flogAnyhow("");
 			flogAnyhow("#[%s]交易流程开始",flogTime(3));
@@ -2468,12 +2469,12 @@ void *fzoeEmployBoot(void *argument)
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"[%s]",trnname);
-				goto tag22;
+				goto tag21timersettime;
 			}
 			if(dlhand!=NULL)
 				error=((int(*)(void))dlhand)();
 
-			tag21:;
+			tag20ftrnerror:;
 			if(error!=0)
 			{
 				flogAnyhow("");
@@ -2483,23 +2484,23 @@ void *fzoeEmployBoot(void *argument)
 				if(dlhand==NULL)
 				{
 					mlogError("dlsym",0,dlerror(),"");
-					goto tag22;
+					goto tag21timersettime;
 				}
 				((void(*)(int))dlhand)(error);
 				flogAnyhow("#[%s]调用错误处理函数结束",flogTime(3));
 			}
 			flogAnyhow("#[%s]交易流程结束",flogTime(3));
 
-			tag22:;
+			tag21timersettime:;
 			it.it_value.tv_sec=0;
 			result=timer_settime(vzoeTime[index*2+0],0,&it,NULL);
 			if(result==-1)
 			{
 				mlogError("settime",errno,strerror(errno),"");
-				goto tag23;
+				goto tag22setretsmmp;
 			}
 
-			tag23:;
+			tag22setretsmmp:;
 			char cliretcode[4+1];
 			char cliretstat[1+1];
 			char cliretinfo[8+1];
@@ -2535,7 +2536,7 @@ void *fzoeEmployBoot(void *argument)
 				if(errfp==NULL)
 				{
 					mlogError("fopen",errno,strerror(errno),"[%s]",errpath);
-					goto tag14;
+					goto tag13fpkgenc;
 				}
 				while(1)
 				{
@@ -2544,7 +2545,7 @@ void *fzoeEmployBoot(void *argument)
 					if(ferror(errfp))
 					{
 						mlogError("fgets",errno,strerror(errno),"");
-						goto tag14;
+						goto tag13fpkgenc;
 					}
 					if(feof(errfp))
 					{
@@ -2596,12 +2597,12 @@ void *fzoeEmployBoot(void *argument)
 			flogAnyhow("#CliRetStat[%s]",cliretstat);
 			flogAnyhow("#CliRetInfo[%s]",cliretinfo);
 
-			tag24:;
+			tag26ftrnfree:;
 			dlhand=dlsym(vzoeTrnHandle,"ftrnFree");
 			if(dlhand==NULL&&strstr(dlerror(),"undefined symbol")==NULL)
 			{
 				mlogError("dlsym",0,dlerror(),"");
-				goto tag25;
+				goto tag27flogfree;
 			}
 			if(dlhand!=NULL)
 			{
@@ -2610,19 +2611,19 @@ void *fzoeEmployBoot(void *argument)
 				result=((int(*)(void))dlhand)();
 				flogAnyhow("#[%s]交易后处理结束",flogTime(3));
 				if(result==-1)
-					goto tag25;
+					goto tag27flogfree;
 			}
 
-			tag25:;
+			tag27flogfree:;
 			flogAnyhow("#[%s]交易结束",flogTime(3));
 			flogAnyhow("****************************************************************");
 			char logfmlpath[64];
 			sprintf(logfmlpath,"%s/%s/log/%s-%s-%s.log",getenv("BUSINESS"),vzoeBsnCode,flogDate(0),lnkcode,trncode);
 			result=flogFree(logfmlpath,logtmppath);
 			if(result==-1)
-				goto tag26;
+				goto tag29setstatus;
 
-			tag26:;
+			tag29setstatus:;
 			vzoeThrList[index].status=0X00;
 		}
 	}
