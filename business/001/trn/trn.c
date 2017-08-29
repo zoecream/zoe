@@ -22,6 +22,7 @@
 \*========================================*/
 int ftrnInit(void)
 {
+	/*
 	int result;
 
 	result=fdbsTran();
@@ -77,6 +78,7 @@ int ftrnInit(void)
 	flogDepend("TrnJour[%s]",trnjour);
 
 	return 0;
+	*/
 }
 
 /*========================================*\
@@ -87,6 +89,7 @@ int ftrnInit(void)
 \*========================================*/
 int ftrnFree(void)
 {
+	/*
 	int result;
 
 	char *bsncode;
@@ -126,7 +129,7 @@ int ftrnFree(void)
 	if(result==-1)
 		return -1;
 
-	/*
+	/-*
 	flogDepend("bsncode[%s]",bsncode);
 	flogDepend("clilnkcode[%s]",clilnkcode);
 	flogDepend("clitrncode[%s]",clitrncode);
@@ -138,14 +141,14 @@ int ftrnFree(void)
 	flogDepend("cliretinfo[%s]",cliretinfo);
 
 	flogDepend("");
-	*/
+	*-/
 
 	result=fdbsManage("insert into Journal values('%s','%s','%s','%s','%s','%s','%s','%s','%s')",
 		bsncode,clilnkcode,clitrncode,trndate,trntime,trnjour,cliretstat,cliretcode,cliretinfo);
 	if(result==-1)
 		return -1;
 
-	/*
+	/-*
 	void *stm;
 	result=fdbsSelectInit(&stm,"select BsnCode,CliLnkCode,CliTrnCode,TrnDate,TrnTime,TrnJour,CliRetStat,CliRetCode,CliRetInfo from Journal where TrnJour='%s'",trnjour);
 	if(result==-1)
@@ -188,9 +191,10 @@ int ftrnFree(void)
 	flogDepend("cliretinfo[%s]",_cliretinfo);
 
 	fdbsSelectFree(stm);
-	*/
+	*-/
 
 	return 0;
+	*/
 }
 
 /*========================================*\
