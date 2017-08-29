@@ -1278,6 +1278,13 @@ void fzoeManageBoot(void)
 			fzoeBootHand(-1,0,0);
 			exit(-1);
 		}
+		result=fcntl(lisid,F_SETFL,O_NONBLOCK);
+		if(result==-1)
+		{
+			mlogError("fcntl",errno,strerror(errno),"");
+			fzoeBootHand(-1,0,0);
+			exit(-1);
+		}
 
 		struct sockaddr_in lisaddress;
 		bzero(&lisaddress,sizeof(lisaddress));
@@ -1652,13 +1659,22 @@ void fzoeManageBoot(void)
 				size=sizeof(conaddress);
 				int conid;
 				conid=accept(events[i].data.fd/1000,(struct sockaddr*)&conaddress,&size);
-				if(conid==-1&&errno!=EAGAIN&&errno!=EINTR)
+				if(conid==-1&&errno!=EAGAIN&&errno!=ECONNABORTED&&errno!=EINTR)
 				{
 					mlogError("accept",errno,strerror(errno),"");
 					exit(-1);
 				}
-				if(conid==-1&&(errno==EAGAIN||errno==EINTR))
+				else
+				if(conid==-1&&(errno==EAGAIN||errno==ECONNABORTED))
+				{
 					break;
+				}
+				else
+				if(conid==-1&&errno==EINTR)
+				{
+					continue;
+				}
+
 
 				result=pthread_mutex_lock(&vzoeMutex);
 				if(result!=0)
