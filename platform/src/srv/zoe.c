@@ -1620,16 +1620,8 @@ void fzoeManageBoot(void)
 			}
 			continue;
 		}
-
-		for(i=0;i<count;i++)
+		else
 		{
-			if(events[i].events&EPOLLERR||events[i].events&EPOLLHUP)
-			{
-				close(events[i].data.fd/1000);
-				epoll_ctl(epollid,EPOLL_CTL_DEL,events[i].data.fd/1000,NULL);
-				continue;
-			}
-
 			if(vzoeThrBusy==vzoeThrLive&&vzoeThrLive<vzoeThrMaxCnt)
 			{
 				for(j=0;j<vzoeThrMinCnt;j++)
@@ -1649,6 +1641,16 @@ void fzoeManageBoot(void)
 				}
 				vzoeThrLive+=vzoeThrMinCnt;
 				vzoeThrBusy+=vzoeThrMinCnt;
+			}
+		}
+
+		for(i=0;i<count;i++)
+		{
+			if(events[i].events&EPOLLERR||events[i].events&EPOLLHUP)
+			{
+				close(events[i].data.fd/1000);
+				epoll_ctl(epollid,EPOLL_CTL_DEL,events[i].data.fd/1000,NULL);
+				continue;
 			}
 
 			while(1)
