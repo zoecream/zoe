@@ -589,17 +589,14 @@ int main(int argc,char *argv[])
 		}
 	}
 
-	result=fpkgEnc("001","T02",&fmldata,&tmpdata,&size);
+	result=fpkgEnc("001","T01",&fmldata,&tmpdata,&size);
 	if(result==-1)
 	{
 		fprintf(stderr,"fpkgEnc failed.\n");
 		return -1;
 	}
 
-	/*
 	printf("========================================\n");
-	*/
-	printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
 	result=fmmpRnit(4096);
 	if(result==-1)
@@ -625,13 +622,14 @@ int main(int argc,char *argv[])
 	if(result==-1)
 		return -1;
 
-	result=fpkgDec("001","T02",&fmldata,&tmpdata,size);
+	result=fpkgDec("001","T01",&fmldata,&tmpdata,size);
 	if(result==-1)
 	{
 		fprintf(stderr,"fpkgDec failed.\n");
 		return -1;
 	}
 
+	/*
 	{
 		int *immp;
 		result=fmmpRefGet("immp1",0,&immp,0);
@@ -715,10 +713,9 @@ int main(int argc,char *argv[])
 			printf("_pmmp4_%d:[%s]\n",i,pmmp);
 		}
 	}
-
-	/*
-	printf("========================================\n");
 	*/
+
+	printf("========================================\n");
 
 	fmmpFree();
 

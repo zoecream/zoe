@@ -110,23 +110,22 @@ int fpkgFree(char **fmldata,char **tmpdata,int *size,char *argument)
     参数 : (出入)正式报文数据
            (出入)临时报文数据
            (出入)报文长度
-           (输入)拼接(cat)/裁剪(cut)
+           (输入)enc/dec
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgSomething(char **fmldata,char **tmpdata,int *size,char *argument)
+int fpkgHand(char **fmldata,char **tmpdata,int *size,char *argument)
 {
-	if(strcmp(argument,"cat")==0)
+	if(strcmp(argument,"enc")==0)
 	{
-		(*fmldata)[*size+0]='a';
-		(*fmldata)[*size+1]='\0';
-		*size+=1;
+		strcpy(*fmldata+*size,"_hand");
+		*size+=5;
 	}
 	else
-	if(strcmp(argument,"cut")==0)
+	if(strcmp(argument,"dec")==0)
 	{
-		(*fmldata)[*size-1]='\0';
-		*size-=-1;
+		(*fmldata)[*size-5]='\0';
+		*size-=5;
 	}
 
 	return 0;
