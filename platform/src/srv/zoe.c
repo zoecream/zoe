@@ -942,7 +942,6 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 	int i;
 	int j;
 
-	mlogDebug("a");
 	char fifopath[64];
 	sprintf(fifopath,"%s/%s/.zoefifo",getenv("BUSINESS"),vzoeBsnCode);
 	int fifoid;
@@ -952,7 +951,6 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 		mlogError("open",errno,strerror(errno),"[%s]",fifopath);
 		return;
 	}
-	mlogDebug("b");
 
 	for(i=0;i<vzoeThrLive;i++)
 	{
@@ -1037,7 +1035,6 @@ void fzoeListHand(int id,siginfo_t *siginfo,void *nothing)
 	}
 
 	close(fifoid);
-	mlogDebug();
 	return;
 }
 
@@ -1073,14 +1070,43 @@ void fzoeManageBoot(void)
 		fzoeBootHand(-1,0,0);
 		exit(-1);
 	}
-
 	sigset_t oldset;
-	sigprocmask(SIG_SETMASK,NULL,&oldset);
+	result=sigprocmask(SIG_SETMASK,NULL,&oldset);
+	if(result==-1)
+	{
+		mlogError("sigprocmask",errno,strerror(errno),"");
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
 	sigset_t newset;
-	sigemptyset(&newset);
+	result=sigemptyset(&newset);
+	if(result==-1)
+	{
+		mlogError("sigemptyset",errno,strerror(errno),"");
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
 	sigaddset(&newset,SIGUSR1);
-	sigaddset(&newset,SIGUSR2);
-	sigprocmask(SIG_SETMASK,&newset,NULL);
+	if(result==-1)
+	{
+		mlogError("sigaddset",errno,strerror(errno),"");
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
+	result=sigaddset(&newset,SIGUSR2);
+	if(result==-1)
+	{
+		mlogError("sigaddset",errno,strerror(errno),"");
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
+	result=sigprocmask(SIG_SETMASK,&newset,NULL);
+	if(result==-1)
+	{
+		mlogError("sigprocmask",errno,strerror(errno),"");
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
 
 	char bsninipath[64];
 	sprintf(bsninipath,"%s/%s/ini/bsn.ini",getenv("BUSINESS"),vzoeBsnCode);
@@ -1480,6 +1506,9 @@ void fzoeManageBoot(void)
 	vzoeThrLive+=vzoeThrMinCnt;
 	vzoeThrBusy+=vzoeThrMinCnt;
 
+	struct timespec timeout;
+	bzero(&timeout,sizeof(timeout));
+	timeout.tv_sec=vzoeLisTime;
 	int maxfd;
 	maxfd=0;
 	fd_set fmlfdset;
@@ -1542,7 +1571,6 @@ void fzoeManageBoot(void)
 		vzoeLnkList[i].lisid=lisid;
 		maxfd=lisid>maxfd?lisid:maxfd;
 		FD_SET(lisid,&fmlfdset);
-		mlogDebug("%d",lisid);
 	}
 
 	fzoeBootHand(0,syscall(SYS_gettid),pthread_self());
@@ -1554,12 +1582,8 @@ void fzoeManageBoot(void)
 	{
 		fd_set tmpfdset;
 		memcpy(&tmpfdset,&fmlfdset,sizeof(fd_set));
-		struct timespec timeout;
-		bzero(&timeout,sizeof(timeout));
-		timeout.tv_sec=vzoeLisTime;
 		int count;
 		count=pselect(maxfd+1,&tmpfdset,NULL,NULL,&timeout,&oldset);
-		mlogDebug("%d",count);
 		if(count==-1&&errno!=EINTR)
 		{
 			mlogError("select",errno,strerror(errno),"[%d]",timeout.tv_sec);
@@ -1646,17 +1670,13 @@ void fzoeManageBoot(void)
 						size=sizeof(conaddress);
 						int conid;
 						conid=accept(vzoeLnkList[j].lisid,(struct sockaddr*)&conaddress,&size);
-						if(conid==-1&&errno!=EAGAIN&&errno!=ECONNABORTED&&errno!=EINTR)
+						if(conid==-1&&errno!=EAGAIN&&errno!=ECONNABORTED)
 						{
 							mlogError("accept",errno,strerror(errno),"");
 							exit(-1);
 						}
-						if(conid==-1&&errno==EAGAIN)
+						if(conid==-1&&(errno==EAGAIN||errno==ECONNABORTED))
 							break;
-						if(conid==-1&&errno==ECONNABORTED)
-							break;
-						if(conid==-1&&errno==EINTR)
-							continue;
 
 						result=pthread_mutex_lock(&vzoeMutex);
 						if(result!=0)
@@ -1666,7 +1686,6 @@ void fzoeManageBoot(void)
 						}
 						if((vzoeTskTail+1)%vzoeTskSize==vzoeTskHead)
 						{
-							mlogDebug("%d-%d-%d",vzoeTskTail,vzoeTskSize,vzoeTskHead);
 							result=pthread_cond_wait(&vzoeCondNf,&vzoeMutex);
 							if(result!=0)
 							{
