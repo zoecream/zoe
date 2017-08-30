@@ -136,8 +136,10 @@ int fpkgVarEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 		if(*(char*)node=='\0')
 			break;
 
-		char mfmldata[1024];
-		char mtmpdata[1024];
+		char _mfmldata[1024];
+		char *mfmldata=_mfmldata;
+		char _mtmpdata[1024];
+		char *mtmpdata=_mtmpdata;
 		int msize;
 
 		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
@@ -146,9 +148,6 @@ int fpkgVarEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 			if(result==-1)
 				return -1;
 
-			if(node->mark[node->mark[0]=='_'?1:0]=='p')
-				;
-			else
 			if(node->mark[node->mark[0]=='_'?1:0]=='i')
 				msize=sprintf(mfmldata,"%d",*(int*)mfmldata);
 			else
@@ -160,19 +159,17 @@ int fpkgVarEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 
 			if(node->pointer==NULL)
 			{
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				memcpy(*data,mfmldata,msize);
 			}
 			else
 			{
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-				result=((int(*)(char*,int,char*,int*,char*))node->pointer)(mfmldata,msize,mtmpdata,&msize,node->argument);
+				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
 				if(result==-1)
 					return -1;
-				memcpy(*data,mtmpdata,msize);
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mtmpdata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				memcpy(*data,mfmldata,msize);
 			}
 		}
 		else
@@ -219,8 +216,10 @@ int fpkgVarDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 		if(*(char*)node=='\0')
 			break;
 
-		char mfmldata[1024];
-		char mtmpdata[1024];
+		char _mfmldata[1024];
+		char *mfmldata=_mfmldata;
+		char _mtmpdata[1024];
+		char *mtmpdata=_mtmpdata;
 		int msize;
 
 		msize=0;
@@ -237,21 +236,19 @@ int fpkgVarDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 
 		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
 		{
-			if(node->pointer!=NULL)
+			if(node->pointer==NULL)
 			{
-				memcpy(mtmpdata,*data,msize);
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mtmpdata);
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mtmpdata);
-				result=((int(*)(char*,int,char*,int*,char*))node->pointer)(mtmpdata,msize,mfmldata,&msize,node->argument);
-				if(result==-1)
-					return -1;
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				memcpy(mfmldata,*data,msize);
+				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 			}
 			else
 			{
 				memcpy(mfmldata,*data,msize);
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+				if(result==-1)
+					return -1;
+				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
 			}
 			mfmldata[msize]='\0';
 
@@ -320,8 +317,10 @@ int fpkgFixEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 		if(*(char*)node=='\0')
 			break;
 
-		char mfmldata[1024];
-		char mtmpdata[1024];
+		char _mfmldata[1024];
+		char *mfmldata=_mfmldata;
+		char _mtmpdata[1024];
+		char *mtmpdata=_mtmpdata;
 		int msize;
 
 		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
@@ -330,9 +329,6 @@ int fpkgFixEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 			if(result==-1)
 				return -1;
 
-			if(node->mark[node->mark[0]=='_'?1:0]=='p')
-				;
-			else
 			if(node->mark[node->mark[0]=='_'?1:0]=='i')
 				msize=sprintf(mfmldata,"%d",*(int*)mfmldata);
 			else
@@ -344,19 +340,17 @@ int fpkgFixEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 
 			if(node->pointer==NULL)
 			{
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				memcpy(*data,mfmldata,msize);
 			}
 			else
 			{
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-				result=((int(*)(char*,int,char*,int*,char*))node->pointer)(mfmldata,msize,mtmpdata,&msize,node->argument);
+				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
 				if(result==-1)
 					return -1;
-				memcpy(*data,mtmpdata,msize);
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mtmpdata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				memcpy(*data,mfmldata,msize);
 			}
 		}
 		else
@@ -404,8 +398,10 @@ int fpkgFixDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 		if(*(char*)node=='\0')
 			break;
 
-		char mfmldata[1024];
-		char mtmpdata[1024];
+		char _mfmldata[1024];
+		char *mfmldata=_mfmldata;
+		char _mtmpdata[1024];
+		char *mtmpdata=_mtmpdata;
 		int msize;
 
 		if(size<*(short*)node->feature)
@@ -419,21 +415,19 @@ int fpkgFixDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 
 		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
 		{
-			if(node->pointer!=NULL)
+			if(node->pointer==NULL)
 			{
-				memcpy(mtmpdata,*data,msize);
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mtmpdata);
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mtmpdata);
-				result=((int(*)(char*,int,char*,int*,char*))node->pointer)(mtmpdata,msize,mfmldata,&msize,node->argument);
-				if(result==-1)
-					return -1;
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				memcpy(mfmldata,*data,msize);
+				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 			}
 			else
 			{
 				memcpy(mfmldata,*data,msize);
-				//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+				if(result==-1)
+					return -1;
+				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
 			}
 			mfmldata[msize]='\0';
 
@@ -507,8 +501,10 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 		if(*(char*)node=='\0')
 			break;
 
-		char mfmldata[1024];
-		char mtmpdata[1024];
+		char _mfmldata[1024];
+		char *mfmldata=_mfmldata;
+		char _mtmpdata[1024];
+		char *mtmpdata=_mtmpdata;
 		int msize;
 
 		struct tjsnItem *item1;
@@ -531,9 +527,6 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 					if(result==-1)
 						return -1;
 
-					if(node->mark[node->mark[0]=='_'?1:0]=='p')
-						;
-					else
 					if(node->mark[node->mark[0]=='_'?1:0]=='i')
 						msize=sprintf(mfmldata,"%d",*(int*)mfmldata);
 					else
@@ -545,7 +538,6 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 
 					if(node->pointer==NULL)
 					{
-						//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 						if(node->mark[node->mark[0]=='_'?1:0]=='p')
 							result=fjsnStrCreate(&item2,mfmldata,msize);
@@ -556,18 +548,17 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 					}
 					else
 					{
-						//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-						result=((int(*)(char*,int,char*,int*,char*))node->pointer)(mfmldata,msize,mtmpdata,&msize,node->argument);
+						result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
 						if(result==-1)
 							return -1;
+						flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
 						if(node->mark[node->mark[0]=='_'?1:0]=='p')
-							result=fjsnStrCreate(&item2,mtmpdata,msize);
+							result=fjsnStrCreate(&item2,mfmldata,msize);
 						else
-							result=fjsnNumCreate(&item2,mtmpdata,msize);
+							result=fjsnNumCreate(&item2,mfmldata,msize);
 						if(result==-1)
 							return -1;
-						flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mtmpdata);
 					}
 				}
 				else
@@ -645,8 +636,10 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 		if(*(char*)node=='\0')
 			break;
 
-		char mfmldata[1024];
-		char mtmpdata[1024];
+		char _mfmldata[1024];
+		char *mfmldata=_mfmldata;
+		char _mtmpdata[1024];
+		char *mtmpdata=_mtmpdata;
 		int msize;
 
 		struct tjsnItem *item1;
@@ -671,21 +664,19 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 
 				if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
 				{
-					if(node->pointer!=NULL)
+					if(node->pointer==NULL)
 					{
-						memcpy(mtmpdata,item2->vald,msize);
-						//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mtmpdata);
-						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mtmpdata);
-						result=((int(*)(char*,int,char*,int*,char*))node->pointer)(mtmpdata,msize,mfmldata,&msize,node->argument);
-						if(result==-1)
-							return -1;
-						flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+						memcpy(mfmldata,item2->vald,msize);
+						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 					}
 					else
 					{
 						memcpy(mfmldata,item2->vald,msize);
-						//flogDepend("*[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
 						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+						result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+						if(result==-1)
+							return -1;
+						flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
 					}
 
 					if(node->mark[node->mark[0]=='_'?1:0]=='p')
@@ -1376,14 +1367,15 @@ int fpkgEnc(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int *size)
 
 			if(hand->package=='-')
 			{
-				flogDepend("#[%-15s][%4d][%s]",hand->name,*size,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->name,*size,*size,*fmldata);
 			}
 			else
 			if(hand->package=='+')
 			{
 				fpkgHexEnc(fmldata,tmpdata,size,"upper");
-				flogDepend("#[%-15s][%4d][%s]",hand->name,*size/=2,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->name,*size/2,*size,*fmldata);
 				mpkgSwap(*fmldata,*tmpdata);
+				*size/=2;
 			}
 		}
 
@@ -1447,14 +1439,15 @@ int fpkgDec(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int size)
 		{
 			if(hand->package=='-')
 			{
-				flogDepend("#[%-15s][%4d][%s]",hand->name,size,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->name,size,size,*fmldata);
 			}
 			else
 			if(hand->package=='+')
 			{
 				fpkgHexEnc(fmldata,tmpdata,&size,"upper");
-				flogDepend("#[%-15s][%4d][%s]",hand->name,size/=2,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->name,size/2,size,*fmldata);
 				mpkgSwap(*fmldata,*tmpdata);
+				size/=2;
 			}
 
 			if
