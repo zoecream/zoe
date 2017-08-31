@@ -124,9 +124,7 @@ int fjsnCreate(struct tjsnItem **item,char *path,char *data,int size)
 				if(*(path+mjsnSize(path,"/:"))==':')
 					(*item)->type=cjsnArr;
 				else
-				if(*(path+mjsnSize(path,"/:"))=='\0')
-					(*item)->type=cjsnStr;
-				else
+				if(*(path+mjsnSize(path,"/:"))!='\0')
 					return -1;
 				if(*(path-1)=='/')
 				{
@@ -163,6 +161,22 @@ int fjsnCreate(struct tjsnItem **item,char *path,char *data,int size)
 		return -1;
 	if((*item)->valdata!=NULL||(*item)->valsize!=0)
 		return -1;
+	if
+	(
+		size==4&&memcmp(data,"null",4)==0||
+		size==4&&memcmp(data,"true",4)==0||
+		size==5&&memcmp(data,"false",5)==0
+	)
+		(*item)->type=cjsnNum;
+	else
+	{
+		char *temp;
+		strtod(data,&temp);
+		if(temp-data==size)
+			(*item)->type=cjsnNum;
+		else
+			(*item)->type=cjsnStr;
+	}
 	(*item)->valsize=size;
 	(*item)->valdata=(char*)malloc((*item)->valsize);
 	if((*item)->valdata==NULL)
