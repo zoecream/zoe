@@ -30,43 +30,29 @@ struct txmlItem
 int fxmlInit(struct txmlItem **item);
 /*========================================*\
     功能 : 节点释放
-    参数 : (输入)节点
+    参数 : (出入)节点
     返回 : 空
 \*========================================*/
-void fxmlFree(struct txmlItem *item);
+void fxmlFree(struct txmlItem **item);
 
 /*========================================*\
     功能 : 创建节点
     参数 : (输出)节点
-           (输入)类型
-           (输入)键数据
-           (输入)键长度
+           (输入)路径
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlCreate(struct txmlItem **item,int type,char *keydata,int keysize,char *valdata,int valsize);
-/*========================================*\
-    功能 : 插入节点
-    参数 : (输入)目标节点
-           (输入)插入节点
-           (输入)类型
-    返回 : 空
-\*========================================*/
-void fxmlInsert(struct txmlItem *target,struct txmlItem *insert,int type);
+int fxmlCreate(struct txmlItem **item,char *path,char *data,int size);
 /*========================================*\
     功能 : 查询节点
-    参数 : (输入)目标节点
-           (输出)查询节点
-           (输入)类型
-           (输入)键数据
-           (输入)键长度
-           (输入)序号
+    参数 : (输入)节点
+           (输入)路径
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *keydata,int keysize,int index);
+int fxmlSelect(struct txmlItem *item,char *path,char *data,int *size);
 
 /*========================================*\
     功能 : 将节点导出到报文

@@ -31,41 +31,31 @@ struct tjsnItem
 int fjsnInit(struct tjsnItem **item);
 /*========================================*\
     功能 : 节点释放
-    参数 : (输入)节点
+    参数 : (出入)节点
     返回 : 空
 \*========================================*/
-void fjsnFree(struct tjsnItem *item);
+void fjsnFree(struct tjsnItem **item);
 
 /*========================================*\
     功能 : 创建节点
     参数 : (输出)节点
-           (输入)类型
-           (输入)键数据
-           (输入)键长度
+           (输入)路径
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnCreate(struct tjsnItem **item,int type,char *keydata,int keysize,char *valdata,int valsize);
-/*========================================*\
-    功能 : 插入节点
-    参数 : (输入)目标节点
-           (输入)插入节点
-    返回 : 空
-\*========================================*/
-void fjsnInsert(struct tjsnItem *targete,struct tjsnItem *insert);
+int fjsnCreate(struct tjsnItem **item,char *path,char *data,int size);
 /*========================================*\
     功能 : 查询节点
-    参数 : (输入)目标节点
-           (输出)查询节点
-           (输入)键数据
-           (输入)键长度
-           (输入)序号
+    参数 : (输入)节点
+           (输入)路径
+           (输出)值数据
+           (输出)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnSelect(struct tjsnItem *arr,struct tjsnItem **item,char *keydata,int keysize,int index);
+int fjsnSelect(struct tjsnItem *item,char *path,char *data,int *size);
 
 /*========================================*\
     功能 : 将节点导出到报文
