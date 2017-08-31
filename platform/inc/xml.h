@@ -12,8 +12,7 @@
 struct txmlItem
 {
 	char type;
-	struct txmlItem *nodechld;
-	struct txmlItem *attrchld;
+	struct txmlItem *chld;
 	struct txmlItem *next;
 	char *keydata;
 	int keysize;
