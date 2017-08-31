@@ -2,9 +2,8 @@
 export PLATFORM=/home/zoe/platform
 export BUSINESS=/home/zoe/business
 
-export PATH=$PATH:$PLATFORM/bin/srv
-export PATH=$PATH:$PLATFORM/bin/ins
-export PATH=$PATH:$PLATFORM/bin/unt
+export PATH=$PATH:$PLATFORM/srv
+export PATH=$PATH:$PLATFORM/ins
 
 #for unixodbc
 export PATH=$PATH:/usr/local/unixodbc/bin

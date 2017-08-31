@@ -1,27 +1,24 @@
 BSNCODE=000
 
-TRNSOURCE=$(BUSINESS)/$(BSNCODE)/trn/trn.c
-PKGSOURCE=$(BUSINESS)/$(BSNCODE)/pkg/pkg.c
-EMUSOURCE=$(BUSINESS)/$(BSNCODE)/emu/emu.c
+SOURCE+=$(BUSINESS)/$(BSNCODE)/trn/trn.c
+SOURCE+=$(BUSINESS)/$(BSNCODE)/pkg/pkg.c
+SOURCE+=$(BUSINESS)/$(BSNCODE)/emu/emu.c
 
-TRNTARGET=$(BUSINESS)/$(BSNCODE)/trn/libtrn.so
-PKGTARGET=$(BUSINESS)/$(BSNCODE)/pkg/libpkg.so
-EMUTARGET=$(BUSINESS)/$(BSNCODE)/emu/libemu.so
+TARGET+=$(BUSINESS)/$(BSNCODE)/trn/libtrn.so
+TARGET+=$(BUSINESS)/$(BSNCODE)/pkg/libpkg.so
+TARGET+=$(BUSINESS)/$(BSNCODE)/emu/libemu.so
 
-TARGET+=$(TRNTARGET)
-TARGET+=$(PKGTARGET)
-TARGET+=$(EMUTARGET)
+INCPATH=$(patsubst %,-I%,$(wildcard $(PLATFORM)/mod/*))
 
 all: $(TARGET)
 
-$(TRNTARGET):$(TRNSOURCE)
-	gcc -fPIC -shared $< -o $@ -I$(PLATFORM)/inc
-$(PKGTARGET):$(PKGSOURCE)
-	gcc -fPIC -shared $< -o $@ -I$(PLATFORM)/inc
-$(EMUTARGET):$(EMUSOURCE)
-	gcc -fPIC -shared $< -o $@ -I$(PLATFORM)/inc
+lib%.so:%.c
+	@echo "编译模块[$(@F)]"
+	gcc $< -o $@\
+		-fPIC -shared\
+		 $(INCPATH)
 
 touch:
-	touch $(SOURCE)
+	@touch $(SOURCE)
 clean:
-	rm $(TARGET)
+	@rm -f $(TARGET)
