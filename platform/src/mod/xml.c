@@ -35,10 +35,8 @@ int fxmlInit(struct txmlItem **item)
 \*========================================*/
 void fxmlFree(struct txmlItem **item)
 {
-	if((*item)->nodechld)
-		fxmlFree(&(*item)->nodechld);
-	if((*item)->attrchld)
-		fxmlFree(&(*item)->attrchld);
+	if((*item)->chld)
+		fxmlFree(&(*item)->chld);
 	if((*item)->next)
 		fxmlFree(&(*item)->next);
 	if((*item)->keydata)
@@ -70,6 +68,7 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 		result=fxmlInit(item);
 		if(result!=0)
 			return -1;
+		(*item)->type=cxmlNode;
 		(*item)->keysize=mxmlSize(path+1,"/#");
 		(*item)->keydata=(char*)malloc((*item)->keysize);
 		if((*item)->keydata==NULL)
@@ -90,13 +89,9 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 	{
 		if(*path=='\0')
 			break;
-		if(*path=='/')
-			item=&(*item)->nodechld;
-		else
-		if(*path=='#')
-			item=&(*item)->attrchld;
-		else
+		if(*path!='/'&&*path!='#')
 			return -1;
+		item=&(*item)->chld;
 		int index;
 		if(*(path+1+mxmlSize(path+1,"/#:"))==':')
 			index=atoi(path+1+mxmlSize(path+1,"/#:")+1);
@@ -111,6 +106,11 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 				result=fxmlInit(item);
 				if(result!=0)
 					return -1;
+				if(*path=='/')
+					(*item)->type=cxmlNode;
+				else
+				if(*path=='#')
+					(*item)->type=cxmlAttr;
 				(*item)->keysize=mxmlSize(path+1,"/#:");
 				(*item)->keydata=(char*)malloc((*item)->keysize);
 				if((*item)->keydata==NULL)
@@ -118,6 +118,10 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 				memcpy((*item)->keydata,path+1,(*item)->keysize);
 				break;
 			}
+			if(*path=='/'&&(*item)->type!=cxmlNode)
+				goto next;
+			if(*path=='#'&&(*item)->type!=cxmlAttr)
+				goto next;
 			if((*item)->keysize!=mxmlSize(path+1,"/#:"))
 				goto next;
 			if(memcmp((*item)->keydata,path+1,(*item)->keysize)!=0)
@@ -132,7 +136,7 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 		if(*path==':')
 			path+=mxmlSize(path+1,"/#:")+1;
 	}
-	if((*item)->nodechld!=NULL||(*item)->attrchld!=NULL)
+	if((*item)->chld!=NULL)
 		return -1;
 	if((*item)->valdata!=NULL||(*item)->valsize!=0)
 		return -1;
@@ -170,13 +174,9 @@ int fxmlSelect(struct txmlItem *item,char *path,char *data,int *size)
 	{
 		if(*path=='\0')
 			break;
-		if(*path=='/')
-			item=item->nodechld;
-		else
-		if(*path=='#')
-			item=item->attrchld;
-		else
+		if(*path!='/'&&*path!='#')
 			return -1;
+		item=item->chld;
 		int index;
 		if(*(path+1+mxmlSize(path+1,"/#:"))==':')
 			index=atoi(path+1+mxmlSize(path+1,"/#:")+1);
@@ -186,6 +186,10 @@ int fxmlSelect(struct txmlItem *item,char *path,char *data,int *size)
 		{
 			if(item==NULL)
 				return -1;
+			if(*path=='/'&&item->type!=cxmlNode)
+				goto next;
+			if(*path=='#'&&item->type!=cxmlAttr)
+				goto next;
 			if(item->keysize!=mxmlSize(path+1,"/#:"))
 				goto next;
 			if(memcmp(item->keydata,path+1,item->keysize)!=0)
@@ -231,25 +235,31 @@ int fxmlNodeExport(struct txmlItem *item,char **data)
 	*(*data)++='<';
 	*data+=sprintf(*data,"%.*s",item->keysize,item->keydata);
 	struct txmlItem *temp;
-	temp=item->attrchld;
+	temp=item->chld;
 	while(1)
 	{
 		if(temp==NULL)
 			break;
-		*(*data)++=' ';
-		fxmlAttrExport(temp,data);
+		if(temp->type==cxmlAttr)
+		{
+			*(*data)++=' ';
+			fxmlAttrExport(temp,data);
+		}
 		temp=temp->next;
 	}
 	*(*data)++='>';
 	*data+=sprintf(*data,"%.*s",item->valsize,item->valdata);
-	temp=item->nodechld;
+	temp=item->chld;
 	while(1)
 	{
 		if(temp==NULL)
 			break;
-		result=fxmlNodeExport(temp,data);
-		if(result!=0)
-			return -1;
+		if(temp->type==cxmlNode)
+		{
+			result=fxmlNodeExport(temp,data);
+			if(result!=0)
+				return -1;
+		}
 		temp=temp->next;
 	}
 	*(*data)++='<';
@@ -326,7 +336,7 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		if(**data=='>')
 			break;
 		struct txmlItem **temp;
-		temp=&(*item)->attrchld;
+		temp=&(*item)->chld;
 		if(*temp!=NULL)
 		{
 			while(1)
@@ -339,6 +349,7 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		result=fxmlAttrImport(temp,data);
 		if(result!=0)
 			return -1;
+		(*temp)->type=cxmlAttr;
 	}
 	(*data)++;
 	while(1)
@@ -357,7 +368,7 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 			continue;
 		}
 		struct txmlItem **temp;
-		temp=&(*item)->nodechld;
+		temp=&(*item)->chld;
 		if(*temp!=NULL)
 		{
 			while(1)
@@ -370,6 +381,7 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		result=fxmlNodeImport(temp,data);
 		if(result!=0)
 			return -1;
+		(*temp)->type=cxmlNode;
 	}
 	(*data)+=(*item)->keysize;
 	(*data)+=3;
