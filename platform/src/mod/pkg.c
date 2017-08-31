@@ -180,6 +180,8 @@ int fpkgVarEnc(struct tpkgNode *node,char **middle,int count,int index,char **da
 		else
 		if(node->nodename[0]<=0X1F)
 		{
+			if(middle[node->nodename[0]]==NULL)
+				return -100;
 			msize=*(short*)middle[node->nodename[0]];
 			memcpy(*data,middle[node->nodename[0]]+sizeof(short),msize);
 			free(middle[node->nodename[0]]);
@@ -359,6 +361,8 @@ int fpkgFixEnc(struct tpkgNode *node,char **middle,int count,int index,char **da
 		else
 		if(node->nodename[0]<=0X1F)
 		{
+			if(middle[node->nodename[0]]==NULL)
+				return -100;
 			msize=*(short*)middle[node->nodename[0]];
 			memcpy(*data,middle[node->nodename[0]]+sizeof(short),msize);
 			free(middle[node->nodename[0]]);
@@ -565,7 +569,10 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int count,int index,char **da
 				else
 				if(node->nodename[0]<=0X1F)
 				{
-					result=fjsnStrCreate(&item2,middle[node->nodename[0]]+sizeof(short),*(short*)middle[node->nodename[0]]);
+					if(middle[node->nodename[0]]==NULL)
+						return -100;
+					msize=*(short*)middle[node->nodename[0]];
+					result=fjsnStrCreate(&item2,middle[node->nodename[0]]+sizeof(short),msize);
 					if(result==-1)
 						return -1;
 					free(middle[node->nodename[0]]);
@@ -1425,6 +1432,8 @@ int fpkgDec(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int size)
 	{
 		if(hand->middle!=0X20)
 		{
+			if(middle[hand->middle]==NULL)
+				return -100;
 			size=*(short*)middle[hand->middle];
 			memcpy(*fmldata,middle[hand->middle]+sizeof(short),size);
 			free(middle[hand->middle]);
