@@ -38,37 +38,43 @@ char vpkgRuleCount;
 struct tpkgRule
 {
 	//规则标识.
-	char mark[32];
-	//规则位置.
-	char *position;
+	char rulename[32];
+	//函数位置.
+	char *handp;
+	//函数数量.
+	char handcount;
 };
 struct tpkgHand
 {
 	//函数名称.
-	char name[16];
+	char handname[16];
 	//函数参数.
-	char argument[32];
+	char handargs[32];
 	//函数指针.
-	void *pointer;
+	void *handp;
 	//节点位置.
-	char *position;
-	//函数特征.
-	char feature;
-	//函数报文.
-	char package;
+	char *nodep;
+	//节点数量.
+	char nodecount;
+	//节点序号.
+	char nodeindex;
+	//中间数据.
+	char middle;
+	//视觉数据.
+	char visual;
 };
 struct tpkgNode
 {
-	//节点内存.
-	char mark[16];
+	//节点名称.
+	char nodename[16];
 	//函数名称.
-	char name[16];
+	char handname[16];
 	//函数参数.
-	char argument[32];
+	char handargs[32];
 	//函数指针.
-	void *pointer;
-	//节点特征.
-	char feature[64];
+	void *handp;
+	//格式数据.
+	char format[64];
 };
 
 struct tpkgStack
@@ -121,75 +127,74 @@ int fpkgStackPull(struct tpkgStack *stack,struct tpkgHand *hand)
     功能 : 变长格式报文打包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
            (输入)内存池序号
            (输出)报文数据
            (输出)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgVarEnc(struct tpkgNode *node,char **middle,int index,char **data,int *size)
+int fpkgVarEnc(struct tpkgNode *node,char **middle,int count,int index,char **data,int *size)
 {
 	int result;
 
-	while(1)
+	int i;
+	for(i=0;i<count;i++)
 	{
-		if(*(char*)node=='\0')
-			break;
-
 		char _mfmldata[1024];
 		char *mfmldata=_mfmldata;
 		char _mtmpdata[1024];
 		char *mtmpdata=_mtmpdata;
 		int msize;
 
-		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
+		if(node->nodename[0]>0X1F&&node->nodename[0]<0X7E)
 		{
-			result=fmmpValGet(node->mark,index,mfmldata,&msize);
+			result=fmmpValGet(node->nodename,index,mfmldata,&msize);
 			if(result==-1)
 				return -1;
 
-			if(node->mark[node->mark[0]=='_'?1:0]=='i')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='i')
 				msize=sprintf(mfmldata,"%d",*(int*)mfmldata);
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='l')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='l')
 				msize=sprintf(mfmldata,"%ld",*(long*)mfmldata);
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='d')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='d')
 				msize=sprintf(mfmldata,"%.2f",*(double*)mfmldata);
 
-			if(node->pointer==NULL)
+			if(node->handp==NULL)
 			{
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
 				memcpy(*data,mfmldata,msize);
 			}
 			else
 			{
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+				result=((int(*)(char**,char**,int*,char*))node->handp)(&mfmldata,&mtmpdata,&msize,node->handargs);
 				if(result==-1)
 					return -1;
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->handname,msize,msize,mfmldata);
 				memcpy(*data,mfmldata,msize);
 			}
 		}
 		else
-		if(node->mark[0]<=0X2F)
+		if(node->nodename[0]<=0X1F)
 		{
-			msize=*(short*)middle[node->mark[0]-0X21];
-			memcpy(*data,middle[node->mark[0]-0X21]+sizeof(short),msize);
-			free(middle[node->mark[0]-0X21]);
+			msize=*(short*)middle[node->nodename[0]];
+			memcpy(*data,middle[node->nodename[0]]+sizeof(short),msize);
+			free(middle[node->nodename[0]]);
 		}
 		else
-		if(node->mark[0]==0X7E)
+		if(node->nodename[0]==0X7E)
 		{
-			msize=*(short*)(node->mark+1);
-			memcpy(*data,node->mark+1+sizeof(short),msize);
+			msize=*(short*)(node->nodename+1);
+			memcpy(*data,node->nodename+1+sizeof(short),msize);
 		}
 
-		memcpy(*data+msize,&node->feature[1],node->feature[0]);
+		memcpy(*data+msize,&node->format[1],node->format[0]);
 
-		*data+=msize+node->feature[0];
-		*size+=msize+node->feature[0];
+		*data+=msize+node->format[0];
+		*size+=msize+node->format[0];
 
 		node++;
 	}
@@ -201,21 +206,20 @@ int fpkgVarEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
     功能 : 变长格式报文解包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
            (输入)内存池序号
            (出入)报文数据
            (输入)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgVarDec(struct tpkgNode *node,char **middle,int index,char **data,int size)
+int fpkgVarDec(struct tpkgNode *node,char **middle,int count,int index,char **data,int size)
 {
 	int result;
 
-	while(1)
+	int i;
+	for(i=0;i<count;i++)
 	{
-		if(*(char*)node=='\0')
-			break;
-
 		char _mfmldata[1024];
 		char *mfmldata=_mfmldata;
 		char _mtmpdata[1024];
@@ -225,72 +229,72 @@ int fpkgVarDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 		msize=0;
 		while(1)
 		{
-			if(msize>=size-node->feature[0]+1)
+			if(msize>=size-node->format[0]+1)
 				return -1;
-			if(memcmp(*data+msize,&node->feature[1],node->feature[0])==0)
+			if(memcmp(*data+msize,&node->format[1],node->format[0])==0)
 				break;
 			msize++;
 		}
 		int mrecord;
 		mrecord=msize;
 
-		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
+		if(node->nodename[0]>0X1F&&node->nodename[0]<0X7E)
 		{
-			if(node->pointer==NULL)
+			if(node->handp==NULL)
 			{
 				memcpy(mfmldata,*data,msize);
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
 			}
 			else
 			{
 				memcpy(mfmldata,*data,msize);
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+				result=((int(*)(char**,char**,int*,char*))node->handp)(&mfmldata,&mtmpdata,&msize,node->handargs);
 				if(result==-1)
 					return -1;
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->handname,msize,msize,mfmldata);
 			}
 			mfmldata[msize]='\0';
 
-			if(node->mark[node->mark[0]=='_'?1:0]=='p')
-				result=fmmpValSet(node->mark,index,mfmldata,msize);
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='p')
+				result=fmmpValSet(node->nodename,index,mfmldata,msize);
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='i')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='i')
 			{
 				*(int*)mfmldata=atoi(mfmldata);
-				result=fmmpValSet(node->mark,index,mfmldata,0);
+				result=fmmpValSet(node->nodename,index,mfmldata,0);
 			}
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='l')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='l')
 			{
 				*(long*)mfmldata=atol(mfmldata);
-				result=fmmpValSet(node->mark,index,mfmldata,0);
+				result=fmmpValSet(node->nodename,index,mfmldata,0);
 			}
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='d')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='d')
 			{
 				*(double*)mfmldata=atof(mfmldata);
-				result=fmmpValSet(node->mark,index,mfmldata,0);
+				result=fmmpValSet(node->nodename,index,mfmldata,0);
 			}
 			if(result==-1)
 				return -1;
 		}
 		else
-		if(node->mark[0]<=0X2F)
+		if(node->nodename[0]<=0X1F)
 		{
-			middle[node->mark[0]-0X21]=(char*)malloc(sizeof(short)+msize);
-			if(middle[node->mark[0]-0X21]==NULL)
+			middle[node->nodename[0]]=(char*)malloc(sizeof(short)+msize);
+			if(middle[node->nodename[0]]==NULL)
 				return -1;
-			*(short*)middle[node->mark[0]-0X21]=msize;
-			memcpy(middle[node->mark[0]-0X21]+sizeof(short),*data,msize);
+			*(short*)middle[node->nodename[0]]=msize;
+			memcpy(middle[node->nodename[0]]+sizeof(short),*data,msize);
 		}
 		else
-		if(node->mark[0]==0X7E)
+		if(node->nodename[0]==0X7E)
 		{
 		}
 
-		*data+=mrecord+node->feature[0];
-		size-=mrecord+node->feature[0];
+		*data+=mrecord+node->format[0];
+		size-=mrecord+node->format[0];
 
 		node++;
 	}
@@ -302,76 +306,75 @@ int fpkgVarDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
     功能 : 定长格式报文打包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
            (输入)内存池序号
            (输出)报文数据
            (输出)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgFixEnc(struct tpkgNode *node,char **middle,int index,char **data,int *size)
+int fpkgFixEnc(struct tpkgNode *node,char **middle,int count,int index,char **data,int *size)
 {
 	int result;
 
-	while(1)
+	int i;
+	for(i=0;i<count;i++)
 	{
-		if(*(char*)node=='\0')
-			break;
-
 		char _mfmldata[1024];
 		char *mfmldata=_mfmldata;
 		char _mtmpdata[1024];
 		char *mtmpdata=_mtmpdata;
 		int msize;
 
-		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
+		if(node->nodename[0]>0X1F&&node->nodename[0]<0X7E)
 		{
-			result=fmmpValGet(node->mark,index,mfmldata,&msize);
+			result=fmmpValGet(node->nodename,index,mfmldata,&msize);
 			if(result==-1)
 				return -1;
 
-			if(node->mark[node->mark[0]=='_'?1:0]=='i')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='i')
 				msize=sprintf(mfmldata,"%d",*(int*)mfmldata);
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='l')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='l')
 				msize=sprintf(mfmldata,"%ld",*(long*)mfmldata);
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='d')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='d')
 				msize=sprintf(mfmldata,"%.2f",*(double*)mfmldata);
 
-			if(node->pointer==NULL)
+			if(node->handp==NULL)
 			{
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
 				memcpy(*data,mfmldata,msize);
 			}
 			else
 			{
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+				result=((int(*)(char**,char**,int*,char*))node->handp)(&mfmldata,&mtmpdata,&msize,node->handargs);
 				if(result==-1)
 					return -1;
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->handname,msize,msize,mfmldata);
 				memcpy(*data,mfmldata,msize);
 			}
 		}
 		else
-		if(node->mark[0]<=0X2F)
+		if(node->nodename[0]<=0X1F)
 		{
-			msize=*(short*)middle[node->mark[0]-0X21];
-			memcpy(*data,middle[node->mark[0]-0X21]+sizeof(short),msize);
-			free(middle[node->mark[0]-0X21]);
+			msize=*(short*)middle[node->nodename[0]];
+			memcpy(*data,middle[node->nodename[0]]+sizeof(short),msize);
+			free(middle[node->nodename[0]]);
 		}
 		else
-		if(node->mark[0]==0X7E)
+		if(node->nodename[0]==0X7E)
 		{
-			msize=*(short*)(node->mark+1);
-			memcpy(*data,node->mark+1+sizeof(short),msize);
+			msize=*(short*)(node->nodename+1);
+			memcpy(*data,node->nodename+1+sizeof(short),msize);
 		}
 
-		if(*(short*)node->feature>msize)
-			memset(*data+msize,node->feature[sizeof(short)],*(short*)node->feature-msize);
+		if(*(short*)node->format>msize)
+			memset(*data+msize,node->format[sizeof(short)],*(short*)node->format-msize);
 
-		*data+=*(short*)node->feature;
-		*size+=*(short*)node->feature;
+		*data+=*(short*)node->format;
+		*size+=*(short*)node->format;
 
 		node++;
 	}
@@ -383,93 +386,92 @@ int fpkgFixEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
     功能 : 定长格式报文解包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
 		   (输入)内存池序号
            (出入)报文数据
            (输入)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgFixDec(struct tpkgNode *node,char **middle,int index,char **data,int size)
+int fpkgFixDec(struct tpkgNode *node,char **middle,int count,int index,char **data,int size)
 {
 	int result;
 
-	while(1)
+	int i;
+	for(i=0;i<count;i++)
 	{
-		if(*(char*)node=='\0')
-			break;
-
 		char _mfmldata[1024];
 		char *mfmldata=_mfmldata;
 		char _mtmpdata[1024];
 		char *mtmpdata=_mtmpdata;
 		int msize;
 
-		if(size<*(short*)node->feature)
+		if(size<*(short*)node->format)
 			return -1;
 		char *temp;
-		temp=memchr(*data,node->feature[sizeof(short)],*(short*)node->feature);
+		temp=memchr(*data,node->format[sizeof(short)],*(short*)node->format);
 		if(temp==NULL)
-			msize=*(short*)node->feature;
+			msize=*(short*)node->format;
 		else
 			msize=temp-*data;
 
-		if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
+		if(node->nodename[0]>0X1F&&node->nodename[0]<0X7E)
 		{
-			if(node->pointer==NULL)
+			if(node->handp==NULL)
 			{
 				memcpy(mfmldata,*data,msize);
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
 			}
 			else
 			{
 				memcpy(mfmldata,*data,msize);
-				flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-				result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+				flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+				result=((int(*)(char**,char**,int*,char*))node->handp)(&mfmldata,&mtmpdata,&msize,node->handargs);
 				if(result==-1)
 					return -1;
-				flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",node->handname,msize,msize,mfmldata);
 			}
 			mfmldata[msize]='\0';
 
-			if(node->mark[node->mark[0]=='_'?1:0]=='p')
-				result=fmmpValSet(node->mark,index,mfmldata,msize);
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='p')
+				result=fmmpValSet(node->nodename,index,mfmldata,msize);
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='i')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='i')
 			{
 				*(int*)mfmldata=atoi(mfmldata);
-				result=fmmpValSet(node->mark,index,mfmldata,0);
+				result=fmmpValSet(node->nodename,index,mfmldata,0);
 			}
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='l')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='l')
 			{
 				*(long*)mfmldata=atol(mfmldata);
-				result=fmmpValSet(node->mark,index,mfmldata,0);
+				result=fmmpValSet(node->nodename,index,mfmldata,0);
 			}
 			else
-			if(node->mark[node->mark[0]=='_'?1:0]=='d')
+			if(node->nodename[node->nodename[0]=='_'?1:0]=='d')
 			{
 				*(double*)mfmldata=atof(mfmldata);
-				result=fmmpValSet(node->mark,index,mfmldata,0);
+				result=fmmpValSet(node->nodename,index,mfmldata,0);
 			}
 			if(result==-1)
 				return -1;
 		}
 		else
-		if(node->mark[0]<=0X2F)
+		if(node->nodename[0]<=0X1F)
 		{
-			middle[node->mark[0]-0X21]=(char*)malloc(sizeof(short)+msize);
-			if(middle[node->mark[0]-0X21]==NULL)
+			middle[node->nodename[0]]=(char*)malloc(sizeof(short)+msize);
+			if(middle[node->nodename[0]]==NULL)
 				return -1;
-			*(short*)middle[node->mark[0]-0X21]=msize;
-			memcpy(middle[node->mark[0]-0X21]+sizeof(short),*data,msize);
+			*(short*)middle[node->nodename[0]]=msize;
+			memcpy(middle[node->nodename[0]]+sizeof(short),*data,msize);
 		}
 		else
-		if(node->mark[0]==0X7E)
+		if(node->nodename[0]==0X7E)
 		{
 		}
 
-		*data+=*(short*)node->feature;
-		size-=*(short*)node->feature;
+		*data+=*(short*)node->format;
+		size-=*(short*)node->format;
 
 		node++;
 	}
@@ -481,13 +483,14 @@ int fpkgFixDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
     功能 : JSON格式报文打包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
            (输入)内存池序号
            (输出)报文数据
            (输出)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *size)
+int fpkgJsnEnc(struct tpkgNode *node,char **middle,int count,int index,char **data,int *size)
 {
 	int result;
 
@@ -496,11 +499,9 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 	if(result==-1)
 		return -1;
 
-	while(1)
+	int i;
+	for(i=0;i<count;i++)
 	{
-		if(*(char*)node=='\0')
-			break;
-
 		char _mfmldata[1024];
 		char *mfmldata=_mfmldata;
 		char _mtmpdata[1024];
@@ -513,7 +514,7 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 
 		char *position1;
 		char *position2;
-		position1=node->feature;
+		position1=node->format;
 
 		while(1)
 		{
@@ -521,25 +522,25 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 
 			if(*(position2+1)=='\0')
 			{
-				if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
+				if(node->nodename[0]>0X1F&&node->nodename[0]<0X7E)
 				{
-					result=fmmpValGet(node->mark,index,mfmldata,&msize);
+					result=fmmpValGet(node->nodename,index,mfmldata,&msize);
 					if(result==-1)
 						return -1;
 
-					if(node->mark[node->mark[0]=='_'?1:0]=='i')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='i')
 						msize=sprintf(mfmldata,"%d",*(int*)mfmldata);
 					else
-					if(node->mark[node->mark[0]=='_'?1:0]=='l')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='l')
 						msize=sprintf(mfmldata,"%ld",*(long*)mfmldata);
 					else
-					if(node->mark[node->mark[0]=='_'?1:0]=='d')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='d')
 						msize=sprintf(mfmldata,"%.2f",*(double*)mfmldata);
 
-					if(node->pointer==NULL)
+					if(node->handp==NULL)
 					{
-						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-						if(node->mark[node->mark[0]=='_'?1:0]=='p')
+						flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+						if(node->nodename[node->nodename[0]=='_'?1:0]=='p')
 							result=fjsnStrCreate(&item2,mfmldata,msize);
 						else
 							result=fjsnNumCreate(&item2,mfmldata,msize);
@@ -548,12 +549,12 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 					}
 					else
 					{
-						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-						result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+						flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+						result=((int(*)(char**,char**,int*,char*))node->handp)(&mfmldata,&mtmpdata,&msize,node->handargs);
 						if(result==-1)
 							return -1;
-						flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
-						if(node->mark[node->mark[0]=='_'?1:0]=='p')
+						flogDepend("#[%-15s][%4d][%.*s]",node->handname,msize,msize,mfmldata);
+						if(node->nodename[node->nodename[0]=='_'?1:0]=='p')
 							result=fjsnStrCreate(&item2,mfmldata,msize);
 						else
 							result=fjsnNumCreate(&item2,mfmldata,msize);
@@ -562,17 +563,17 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
 					}
 				}
 				else
-				if(node->mark[0]<=0X2F)
+				if(node->nodename[0]<=0X1F)
 				{
-					result=fjsnStrCreate(&item2,middle[node->mark[0]-0X21]+sizeof(short),*(short*)middle[node->mark[0]-0X21]);
+					result=fjsnStrCreate(&item2,middle[node->nodename[0]]+sizeof(short),*(short*)middle[node->nodename[0]]);
 					if(result==-1)
 						return -1;
-					free(middle[node->mark[0]-0X21]);
+					free(middle[node->nodename[0]]);
 				}
 				else
-				if(node->mark[0]==0X7E)
+				if(node->nodename[0]==0X7E)
 				{
-					result=fjsnStrCreate(&item2,node->mark+1+sizeof(short),*(short*)(node->mark+1));
+					result=fjsnStrCreate(&item2,node->nodename+1+sizeof(short),*(short*)(node->nodename+1));
 					if(result==-1)
 						return -1;
 				}
@@ -613,13 +614,14 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
     功能 : JSON格式报文解包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
 		   (输入)内存池序号
            (出入)报文数据
            (输入)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int size)
+int fpkgJsnDec(struct tpkgNode *node,char **middle,int count,int index,char **data,int size)
 {
 	int result;
 
@@ -631,11 +633,10 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 	if(result==-1)
 		return -1;
 
+	int i;
+	for(i=0;i<count;i++)
 	while(1)
 	{
-		if(*(char*)node=='\0')
-			break;
-
 		char _mfmldata[1024];
 		char *mfmldata=_mfmldata;
 		char _mtmpdata[1024];
@@ -648,7 +649,7 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 
 		char *position1;
 		char *position2;
-		position1=node->feature;
+		position1=node->format;
 
 		while(1)
 		{
@@ -662,60 +663,60 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
 			{
 				msize=item2->vall;
 
-				if(node->mark[0]>0X2F&&node->mark[0]<0X7E)
+				if(node->nodename[0]>0X1F&&node->nodename[0]<0X7E)
 				{
-					if(node->pointer==NULL)
+					if(node->handp==NULL)
 					{
 						memcpy(mfmldata,item2->vald,msize);
-						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
+						flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
 					}
 					else
 					{
 						memcpy(mfmldata,item2->vald,msize);
-						flogDepend("#[%-15s][%4d][%.*s]",node->mark,msize,msize,mfmldata);
-						result=((int(*)(char**,char**,int*,char*))node->pointer)(&mfmldata,&mtmpdata,&msize,node->argument);
+						flogDepend("#[%-15s][%4d][%.*s]",node->nodename,msize,msize,mfmldata);
+						result=((int(*)(char**,char**,int*,char*))node->handp)(&mfmldata,&mtmpdata,&msize,node->handargs);
 						if(result==-1)
 							return -1;
-						flogDepend("#[%-15s][%4d][%.*s]",node->name,msize,msize,mfmldata);
+						flogDepend("#[%-15s][%4d][%.*s]",node->handname,msize,msize,mfmldata);
 					}
 
-					if(node->mark[node->mark[0]=='_'?1:0]=='p')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='p')
 					{
 						mfmldata[msize]='\0';
-						result=fmmpValSet(node->mark,index,mfmldata,msize);
+						result=fmmpValSet(node->nodename,index,mfmldata,msize);
 					}
 					else
-					if(node->mark[node->mark[0]=='_'?1:0]=='i')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='i')
 					{
 						*(int*)mfmldata=atoi(mfmldata);
-						result=fmmpValSet(node->mark,index,mfmldata,0);
+						result=fmmpValSet(node->nodename,index,mfmldata,0);
 					}
 					else
-					if(node->mark[node->mark[0]=='_'?1:0]=='l')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='l')
 					{
 						*(long*)mfmldata=atol(mfmldata);
-						result=fmmpValSet(node->mark,index,mfmldata,0);
+						result=fmmpValSet(node->nodename,index,mfmldata,0);
 					}
 					else
-					if(node->mark[node->mark[0]=='_'?1:0]=='d')
+					if(node->nodename[node->nodename[0]=='_'?1:0]=='d')
 					{
 						*(double*)mfmldata=atof(mfmldata);
-						result=fmmpValSet(node->mark,index,mfmldata,0);
+						result=fmmpValSet(node->nodename,index,mfmldata,0);
 					}
 					if(result==-1)
 						return -1;
 				}
 				else
-				if(node->mark[0]<=0X2F)
+				if(node->nodename[0]<=0X1F)
 				{
-					middle[node->mark[0]-0X21]=(char*)malloc(sizeof(short)+msize);
-					if(middle[node->mark[0]-0X21]==NULL)
+					middle[node->nodename[0]]=(char*)malloc(sizeof(short)+msize);
+					if(middle[node->nodename[0]]==NULL)
 						return -1;
-					*(short*)middle[node->mark[0]-0X21]=msize;
-					memcpy(middle[node->mark[0]-0X21]+sizeof(short),item2->vald,msize);
+					*(short*)middle[node->nodename[0]]=msize;
+					memcpy(middle[node->nodename[0]]+sizeof(short),item2->vald,msize);
 				}
 				else
-				if(node->mark[0]==0X7E)
+				if(node->nodename[0]==0X7E)
 				{
 				}
 
@@ -739,13 +740,14 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int index,char **data,int siz
     功能 : XML格式报文打包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
            (输入)内存池序号
            (输出)报文数据
            (输出)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgXmlEnc(struct tpkgNode *node,char **middle,int index,char **data,int *size)
+int fpkgXmlEnc(struct tpkgNode *node,char **middle,int count,int index,char **data,int *size)
 {
 }
 
@@ -753,13 +755,14 @@ int fpkgXmlEnc(struct tpkgNode *node,char **middle,int index,char **data,int *si
     功能 : XML格式报文解包
     参数 : (输入)报文节点
            (输入)中间数据
+           (输入)节点数量
 		   (输入)内存池序号
            (出入)报文数据
            (输入)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fpkgXmlDec(struct tpkgNode *node,char **middle,int index,char **data,int size)
+int fpkgXmlDec(struct tpkgNode *node,char **middle,int count,int index,char **data,int size)
 {
 }
 
@@ -804,7 +807,6 @@ int fpkgRuleInit(char *bsncode)
 	bzero(handp--,sizeof(struct tpkgHand));
 	struct tpkgNode *nodep;
 	nodep=(struct tpkgNode*)(vpkgRuleHead+sizeof(struct tpkgRule)*cpkgRuleCount);
-	bzero(nodep++,sizeof(struct tpkgNode));
 
 	char pkgpath[64];
 	sprintf(pkgpath,"%s/%s/ini/pkg.ini",getenv("BUSINESS"),bsncode);
@@ -853,8 +855,8 @@ int fpkgRuleInit(char *bsncode)
 			markpos=i;
 			break;
 			case ']':
-			strncpy(rulep->mark,text+markpos+1,i-markpos-1);
-			rulep->mark[i-markpos-1]='\0';
+			strncpy(rulep->rulename,text+markpos+1,i-markpos-1);
+			rulep->rulename[i-markpos-1]='\0';
 			i=0;
 			continue;
 
@@ -916,22 +918,18 @@ int fpkgRuleInit(char *bsncode)
 		bzero(stats,sizeof(stats));
 
 		char index;
-		index=0X21;
+		index=0X00;
 
 		while(1)
 		{
 			if(*position1=='\0')
 			{
-				if(strstr(rulep->mark,"ENCODE")!=NULL)
-					rulep->position=(char*)record;
+				if(strstr(rulep->rulename,"ENCODE")!=NULL)
+					rulep->handp=(char*)record;
 				else
-				if(strstr(rulep->mark,"DECODE")!=NULL)
-					rulep->position=(char*)(handp+1);
-
-				bzero(handp--,sizeof(struct tpkgHand));
-				if((char*)handp<=(char*)nodep)
-					return -1;
-
+				if(strstr(rulep->rulename,"DECODE")!=NULL)
+					rulep->handp=(char*)(handp+1);
+				rulep->handcount=record-handp;
 				break;
 			}
 			else
@@ -941,86 +939,86 @@ int fpkgRuleInit(char *bsncode)
 
 				if(strncmp(position1,"array",5)!=0)
 				{
-					hand.package=*position1;
+					hand.visual=*position1;
 					position1++;
 				}
 
 				position2=strchr(position1,'_');
-				strncpy(hand.name,position1,position2-position1);
-				hand.name[position2-position1]='\0';
+				strncpy(hand.handname,position1,position2-position1);
+				hand.handname[position2-position1]='\0';
 
 				position1=position2+1;
 				position2=strchr(position1,' ');
-				strncpy(hand.argument,position1,position2-position1);
-				hand.argument[position2-position1]='\0';
+				strncpy(hand.handargs,position1,position2-position1);
+				hand.handargs[position2-position1]='\0';
 
-				if(strcmp(hand.name,"array")!=0)
+				if(strcmp(hand.handname,"array")!=0)
 				{
-					if(strcmp(hand.name,"fpkgVarEnc")==0)
-						hand.pointer=fpkgVarEnc;
+					if(strcmp(hand.handname,"fpkgVarEnc")==0)
+						hand.handp=fpkgVarEnc;
 					else
-					if(strcmp(hand.name,"fpkgVarDec")==0)
-						hand.pointer=fpkgVarDec;
+					if(strcmp(hand.handname,"fpkgVarDec")==0)
+						hand.handp=fpkgVarDec;
 					else
-					if(strcmp(hand.name,"fpkgFixEnc")==0)
-						hand.pointer=fpkgFixEnc;
+					if(strcmp(hand.handname,"fpkgFixEnc")==0)
+						hand.handp=fpkgFixEnc;
 					else
-					if(strcmp(hand.name,"fpkgFixDec")==0)
-						hand.pointer=fpkgFixDec;
+					if(strcmp(hand.handname,"fpkgFixDec")==0)
+						hand.handp=fpkgFixDec;
 					else
-					if(strcmp(hand.name,"fpkgXmlEnc")==0)
-						hand.pointer=fpkgXmlEnc;
+					if(strcmp(hand.handname,"fpkgXmlEnc")==0)
+						hand.handp=fpkgXmlEnc;
 					else
-					if(strcmp(hand.name,"fpkgXmlDec")==0)
-						hand.pointer=fpkgXmlDec;
+					if(strcmp(hand.handname,"fpkgXmlDec")==0)
+						hand.handp=fpkgXmlDec;
 					else
-					if(strcmp(hand.name,"fpkgJsnEnc")==0)
-						hand.pointer=fpkgJsnEnc;
+					if(strcmp(hand.handname,"fpkgJsnEnc")==0)
+						hand.handp=fpkgJsnEnc;
 					else
-					if(strcmp(hand.name,"fpkgJsnDec")==0)
-						hand.pointer=fpkgJsnDec;
+					if(strcmp(hand.handname,"fpkgJsnDec")==0)
+						hand.handp=fpkgJsnDec;
 					else
-					if(strcmp(hand.name,"fpkgSetEnc")==0)
-						hand.pointer=fpkgSetEnc;
+					if(strcmp(hand.handname,"fpkgSetEnc")==0)
+						hand.handp=fpkgSetEnc;
 					else
-					if(strcmp(hand.name,"fpkgUrlEnc")==0)
-						hand.pointer=fpkgUrlEnc;
+					if(strcmp(hand.handname,"fpkgUrlEnc")==0)
+						hand.handp=fpkgUrlEnc;
 					else
-					if(strcmp(hand.name,"fpkgUrlDec")==0)
-						hand.pointer=fpkgUrlDec;
+					if(strcmp(hand.handname,"fpkgUrlDec")==0)
+						hand.handp=fpkgUrlDec;
 					else
-					if(strcmp(hand.name,"fpkgHexEnc")==0)
-						hand.pointer=fpkgHexEnc;
+					if(strcmp(hand.handname,"fpkgHexEnc")==0)
+						hand.handp=fpkgHexEnc;
 					else
-					if(strcmp(hand.name,"fpkgHexDec")==0)
-						hand.pointer=fpkgHexDec;
+					if(strcmp(hand.handname,"fpkgHexDec")==0)
+						hand.handp=fpkgHexDec;
 					else
-					if(strcmp(hand.name,"fpkgB64Enc")==0)
-						hand.pointer=fpkgB64Enc;
+					if(strcmp(hand.handname,"fpkgB64Enc")==0)
+						hand.handp=fpkgB64Enc;
 					else
-					if(strcmp(hand.name,"fpkgB64Dec")==0)
-						hand.pointer=fpkgB64Dec;
+					if(strcmp(hand.handname,"fpkgB64Dec")==0)
+						hand.handp=fpkgB64Dec;
 					else
-					if(strcmp(hand.name,"fpkgDigEnc")==0)
-						hand.pointer=fpkgDigEnc;
+					if(strcmp(hand.handname,"fpkgDigEnc")==0)
+						hand.handp=fpkgDigEnc;
 					else
-					if(strcmp(hand.name,"fpkgCipEnc")==0)
-						hand.pointer=fpkgCipEnc;
+					if(strcmp(hand.handname,"fpkgCipEnc")==0)
+						hand.handp=fpkgCipEnc;
 					else
-					if(strcmp(hand.name,"fpkgCipDec")==0)
-						hand.pointer=fpkgCipDec;
+					if(strcmp(hand.handname,"fpkgCipDec")==0)
+						hand.handp=fpkgCipDec;
 					else
-					if(strcmp(hand.name,"fpkgRsaEnc")==0)
-						hand.pointer=fpkgRsaEnc;
+					if(strcmp(hand.handname,"fpkgRsaEnc")==0)
+						hand.handp=fpkgRsaEnc;
 					else
-					if(strcmp(hand.name,"fpkgRsaDec")==0)
-						hand.pointer=fpkgRsaDec;
+					if(strcmp(hand.handname,"fpkgRsaDec")==0)
+						hand.handp=fpkgRsaDec;
 					else
 					{
-						hand.pointer=dlsym(bsnhandle,hand.name);
-						if(hand.pointer==NULL)
+						hand.handp=dlsym(bsnhandle,hand.handname);
+						if(hand.handp==NULL)
 						{
-							mlogError("dlsym",0,dlerror(),"[%s]",hand.name);
+							mlogError("dlsym",0,dlerror(),"[%s]",hand.handname);
 							return -1;
 						}
 					}
@@ -1028,14 +1026,14 @@ int fpkgRuleInit(char *bsncode)
 
 				if
 				(
-					strncmp(hand.name,"fpkgVar",7)==0||
-					strncmp(hand.name,"fpkgFix",7)==0||
-					strncmp(hand.name,"fpkgXml",7)==0||
-					strncmp(hand.name,"fpkgJsn",7)==0
+					strncmp(hand.handname,"fpkgVar",7)==0||
+					strncmp(hand.handname,"fpkgFix",7)==0||
+					strncmp(hand.handname,"fpkgXml",7)==0||
+					strncmp(hand.handname,"fpkgJsn",7)==0
 				)
 				{
 					nodes[alloc]=calloc(64,sizeof(struct tpkgNode));
-					hand.feature=alloc++;
+					hand.nodeindex=alloc++;
 				}
 
 				result=fpkgStackPush(&stack,&hand);
@@ -1055,42 +1053,40 @@ int fpkgRuleInit(char *bsncode)
 
 				if
 				(
-					strncmp(hand.name,"fpkgVar",7)==0||
-					strncmp(hand.name,"fpkgFix",7)==0||
-					strncmp(hand.name,"fpkgXml",7)==0||
-					strncmp(hand.name,"fpkgJsn",7)==0
+					strncmp(hand.handname,"fpkgVar",7)==0||
+					strncmp(hand.handname,"fpkgFix",7)==0||
+					strncmp(hand.handname,"fpkgXml",7)==0||
+					strncmp(hand.handname,"fpkgJsn",7)==0
 				)
 				{
-					hand.position=(char*)nodep;
-					memcpy(nodep,nodes[hand.feature],sizeof(struct tpkgNode)*lasts[hand.feature]);
-					nodep+=lasts[hand.feature];
+					hand.nodep=(char*)nodep;
+					memcpy(nodep,nodes[hand.nodeindex],sizeof(struct tpkgNode)*lasts[hand.nodeindex]);
+					nodep+=lasts[hand.nodeindex];
 					if((char*)handp<=(char*)nodep)
 						return -1;
-					bzero(nodep++,sizeof(struct tpkgNode));
-					if((char*)handp<=(char*)nodep)
-						return -1;
-					free(nodes[hand.feature]);
+					hand.nodecount=lasts[hand.nodeindex];
+					free(nodes[hand.nodeindex]);
 				}
 
 				if
 				(	stack.last&&
 					(
-						strncmp(stack.last->name,"fpkgVar",7)==0||
-						strncmp(stack.last->name,"fpkgFix",7)==0||
-						strncmp(stack.last->name,"fpkgXml",7)==0||
-						strncmp(stack.last->name,"fpkgJsn",7)==0
+						strncmp(stack.last->handname,"fpkgVar",7)==0||
+						strncmp(stack.last->handname,"fpkgFix",7)==0||
+						strncmp(stack.last->handname,"fpkgXml",7)==0||
+						strncmp(stack.last->handname,"fpkgJsn",7)==0
 					)
 				)
 				{
 					struct tpkgNode *node;
-					node=nodes[stack.last->feature]+lasts[stack.last->feature];
-					node->mark[0]=index;
-					hand.feature=index++;
-					stats[stack.last->feature]=1;
+					node=nodes[stack.last->nodeindex]+lasts[stack.last->nodeindex];
+					node->nodename[0]=index;
+					hand.middle=index++;
+					stats[stack.last->nodeindex]=1;
 				}
 				else
 				{
-					hand.feature=0X20;
+					hand.middle=0X20;
 				}
 
 				memcpy(handp--,&hand,sizeof(struct tpkgHand));
@@ -1100,108 +1096,108 @@ int fpkgRuleInit(char *bsncode)
 			else
 			{
 				struct tpkgNode *node;
-				node=nodes[stack.last->feature]+lasts[stack.last->feature];
-				lasts[stack.last->feature]++;
+				node=nodes[stack.last->nodeindex]+lasts[stack.last->nodeindex];
+				lasts[stack.last->nodeindex]++;
 
-				if(stats[stack.last->feature]==0)
+				if(stats[stack.last->nodeindex]==0)
 				{
 					position2=strchr(position1,' ');
 					*position2='\0';
 
 					if(*position1==0X7E)
 					{
-						node->mark[0]=0X7E;
-						*(short*)(node->mark+1)=strlen(position1+1);
-						strcpy(node->mark+1+sizeof(short),position1+1);
+						node->nodename[0]=0X7E;
+						*(short*)(node->nodename+1)=strlen(position1+1);
+						strcpy(node->nodename+1+sizeof(short),position1+1);
 					}
 					else
 					{
 						position2=strchr(position1+1,'_');
 						if(position2==NULL)
 						{
-							strcpy(node->mark,position1);
-							node->pointer=NULL;
+							strcpy(node->nodename,position1);
+							node->handp=NULL;
 						}
 						else
 						{
-							strncpy(node->mark,position1,position2-position1);
-							node->mark[position2-position1]='\0';
+							strncpy(node->nodename,position1,position2-position1);
+							node->nodename[position2-position1]='\0';
 
 							position1=position2+1;
 							position2=strchr(position1,'_');
 							if(position2==NULL)
 								return -1;
-							strncpy(node->name,position1,position2-position1);
-							node->name[position2-position1]='\0';
+							strncpy(node->handname,position1,position2-position1);
+							node->handname[position2-position1]='\0';
 
 							position1=position2+1;
-							strcpy(node->argument,position1);
+							strcpy(node->handargs,position1);
 
-							if(strcmp(node->name,"fpkgVarEnc")==0)
-								node->pointer=fpkgVarEnc;
+							if(strcmp(node->handname,"fpkgVarEnc")==0)
+								node->handp=fpkgVarEnc;
 							else
-							if(strcmp(node->name,"fpkgVarDec")==0)
-								node->pointer=fpkgVarDec;
+							if(strcmp(node->handname,"fpkgVarDec")==0)
+								node->handp=fpkgVarDec;
 							else
-							if(strcmp(node->name,"fpkgFixEnc")==0)
-								node->pointer=fpkgFixEnc;
+							if(strcmp(node->handname,"fpkgFixEnc")==0)
+								node->handp=fpkgFixEnc;
 							else
-							if(strcmp(node->name,"fpkgFixDec")==0)
-								node->pointer=fpkgFixDec;
+							if(strcmp(node->handname,"fpkgFixDec")==0)
+								node->handp=fpkgFixDec;
 							else
-							if(strcmp(node->name,"fpkgXmlEnc")==0)
-								node->pointer=fpkgXmlEnc;
+							if(strcmp(node->handname,"fpkgXmlEnc")==0)
+								node->handp=fpkgXmlEnc;
 							else
-							if(strcmp(node->name,"fpkgXmlDec")==0)
-								node->pointer=fpkgXmlDec;
+							if(strcmp(node->handname,"fpkgXmlDec")==0)
+								node->handp=fpkgXmlDec;
 							else
-							if(strcmp(node->name,"fpkgJsnEnc")==0)
-								node->pointer=fpkgJsnEnc;
+							if(strcmp(node->handname,"fpkgJsnEnc")==0)
+								node->handp=fpkgJsnEnc;
 							else
-							if(strcmp(node->name,"fpkgJsnDec")==0)
-								node->pointer=fpkgJsnDec;
+							if(strcmp(node->handname,"fpkgJsnDec")==0)
+								node->handp=fpkgJsnDec;
 							else
-							if(strcmp(node->name,"fpkgSetEnc")==0)
-								node->pointer=fpkgSetEnc;
+							if(strcmp(node->handname,"fpkgSetEnc")==0)
+								node->handp=fpkgSetEnc;
 							else
-							if(strcmp(node->name,"fpkgUrlEnc")==0)
-								node->pointer=fpkgUrlEnc;
+							if(strcmp(node->handname,"fpkgUrlEnc")==0)
+								node->handp=fpkgUrlEnc;
 							else
-							if(strcmp(node->name,"fpkgUrlDec")==0)
-								node->pointer=fpkgUrlDec;
+							if(strcmp(node->handname,"fpkgUrlDec")==0)
+								node->handp=fpkgUrlDec;
 							else
-							if(strcmp(node->name,"fpkgHexEnc")==0)
-								node->pointer=fpkgHexEnc;
+							if(strcmp(node->handname,"fpkgHexEnc")==0)
+								node->handp=fpkgHexEnc;
 							else
-							if(strcmp(node->name,"fpkgHexDec")==0)
-								node->pointer=fpkgHexDec;
+							if(strcmp(node->handname,"fpkgHexDec")==0)
+								node->handp=fpkgHexDec;
 							else
-							if(strcmp(node->name,"fpkgB64Enc")==0)
-								node->pointer=fpkgB64Enc;
+							if(strcmp(node->handname,"fpkgB64Enc")==0)
+								node->handp=fpkgB64Enc;
 							else
-							if(strcmp(node->name,"fpkgB64Dec")==0)
-								node->pointer=fpkgB64Dec;
+							if(strcmp(node->handname,"fpkgB64Dec")==0)
+								node->handp=fpkgB64Dec;
 							else
-							if(strcmp(node->name,"fpkgDigEnc")==0)
-								node->pointer=fpkgDigEnc;
+							if(strcmp(node->handname,"fpkgDigEnc")==0)
+								node->handp=fpkgDigEnc;
 							else
-							if(strcmp(node->name,"fpkgCipEnc")==0)
-								node->pointer=fpkgCipEnc;
+							if(strcmp(node->handname,"fpkgCipEnc")==0)
+								node->handp=fpkgCipEnc;
 							else
-							if(strcmp(node->name,"fpkgCipDec")==0)
-								node->pointer=fpkgCipDec;
+							if(strcmp(node->handname,"fpkgCipDec")==0)
+								node->handp=fpkgCipDec;
 							else
-							if(strcmp(node->name,"fpkgRsaEnc")==0)
-								node->pointer=fpkgRsaEnc;
+							if(strcmp(node->handname,"fpkgRsaEnc")==0)
+								node->handp=fpkgRsaEnc;
 							else
-							if(strcmp(node->name,"fpkgRsaDec")==0)
-								node->pointer=fpkgRsaDec;
+							if(strcmp(node->handname,"fpkgRsaDec")==0)
+								node->handp=fpkgRsaDec;
 							else
 							{
-								node->pointer=dlsym(bsnhandle,node->name);
-								if(node->pointer==NULL)
+								node->handp=dlsym(bsnhandle,node->handname);
+								if(node->handp==NULL)
 								{
-									mlogError("dlsym",0,dlerror(),"[%s]",node->name);
+									mlogError("dlsym",0,dlerror(),"[%s]",node->handname);
 									return -1;
 								}
 							}
@@ -1212,10 +1208,10 @@ int fpkgRuleInit(char *bsncode)
 				}
 				else
 				{
-					stats[stack.last->feature]=0;
+					stats[stack.last->nodeindex]=0;
 				}
 
-				if(strncmp(stack.last->name,"fpkgVar",7)==0)
+				if(strncmp(stack.last->handname,"fpkgVar",7)==0)
 				{
 					position2=strchr(position1,' ');
 					int m;
@@ -1224,56 +1220,56 @@ int fpkgRuleInit(char *bsncode)
 					{
 						if(m%2==0)
 							if(isdigit(position1[m]))
-								node->feature[1+n]=position1[m]-'0'<<4;
+								node->format[1+n]=position1[m]-'0'<<4;
 							else
-								node->feature[1+n]=position1[m]-'A'+0X0A<<4;
+								node->format[1+n]=position1[m]-'A'+0X0A<<4;
 						else
 							if(isdigit(position1[m]))
-								node->feature[1+n++]|=position1[m]-'0';
+								node->format[1+n++]|=position1[m]-'0';
 							else
-								node->feature[1+n++]|=position1[m]-'A'+0X0A;
+								node->format[1+n++]|=position1[m]-'A'+0X0A;
 					}
-					node->feature[1+n]='\0';
+					node->format[1+n]='\0';
 
-					node->feature[0]=(position2-position1)/2;
+					node->format[0]=(position2-position1)/2;
 
 					position1=position2+1;
 				}
 				else
-				if(strncmp(stack.last->name,"fpkgFix",7)==0)
+				if(strncmp(stack.last->handname,"fpkgFix",7)==0)
 				{
-					*(short*)node->feature=atoi(position1);
+					*(short*)node->format=atoi(position1);
 
 					position2=strchr(position1,',');
 					position1=position2+1;
 					position2=strchr(position1,' ');
 					if(isdigit(position1[0]))
-						node->feature[sizeof(short)]=position1[0]-'0'<<4&0XF0;
+						node->format[sizeof(short)]=position1[0]-'0'<<4&0XF0;
 					else
-						node->feature[sizeof(short)]=position1[0]-'A'+0X0A<<4&0XF0;
+						node->format[sizeof(short)]=position1[0]-'A'+0X0A<<4&0XF0;
 					if(isdigit(position1[1]))
-						node->feature[sizeof(short)]|=position1[1]-'0'&0X0F;
+						node->format[sizeof(short)]|=position1[1]-'0'&0X0F;
 					else
-						node->feature[sizeof(short)]|=position1[1]-'A'+0X0A&0X0F;
+						node->format[sizeof(short)]|=position1[1]-'A'+0X0A&0X0F;
 
 					position1=position2+1;
 				}
 				else
-				if(strncmp(stack.last->name,"fpkgXml",7)==0)
+				if(strncmp(stack.last->handname,"fpkgXml",7)==0)
 				{
 					position2=strchr(position1,' ');
-					strncpy(node->feature,position1+1,position2-position1-1);
-					node->feature[position2-position1-1]='/';
-					node->feature[position2-position1]='\0';
+					strncpy(node->format,position1+1,position2-position1-1);
+					node->format[position2-position1-1]='/';
+					node->format[position2-position1]='\0';
 					position1=position2+1;
 				}
 				else
-				if(strncmp(stack.last->name,"fpkgJsn",7)==0)
+				if(strncmp(stack.last->handname,"fpkgJsn",7)==0)
 				{
 					position2=strchr(position1,' ');
-					strncpy(node->feature,position1+1,position2-position1-1);
-					node->feature[position2-position1-1]='/';
-					node->feature[position2-position1]='\0';
+					strncpy(node->format,position1+1,position2-position1-1);
+					node->format[position2-position1-1]='/';
+					node->format[position2-position1]='\0';
 					position1=position2+1;
 				}
 			}
@@ -1304,6 +1300,9 @@ int fpkgEnc(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int *size)
 {
 	int result;
 
+	int i;
+	int j;
+
 	char pkgcode[32];
 	sprintf(pkgcode,"%s_%s_ENCODE",lnkcode,trncode);
 
@@ -1312,23 +1311,20 @@ int fpkgEnc(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int *size)
 	if(rule==NULL)
 		return -100;
 	struct tpkgHand *hand;
-	hand=(struct tpkgHand*)rule->position;
+	hand=(struct tpkgHand*)rule->handp;
 
 	char *middle[16];
 
-	while(1)
+	for(i=0;i<rule->handcount;i++)
 	{
-		if(*(char*)hand=='\0')
-			break;
-
-		if(strcmp(hand->name,"array")!=0)
+		if(strcmp(hand->handname,"array")!=0)
 		{
 			if
 			(
-				strncmp(hand->name,"fpkgVar",7)==0||
-				strncmp(hand->name,"fpkgFix",7)==0||
-				strncmp(hand->name,"fpkgXml",7)==0||
-				strncmp(hand->name,"fpkgJsn",7)==0
+				strncmp(hand->handname,"fpkgVar",7)==0||
+				strncmp(hand->handname,"fpkgFix",7)==0||
+				strncmp(hand->handname,"fpkgXml",7)==0||
+				strncmp(hand->handname,"fpkgJsn",7)==0
 			)
 			{
 				char *move;
@@ -1336,23 +1332,22 @@ int fpkgEnc(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int *size)
 
 				*size=0;
 
-				if(strcmp((hand-1)->name,"array")!=0)
+				if(strcmp((hand-1)->handname,"array")!=0)
 				{
-					result=((int(*)(struct tpkgNode*,char**,int,char**,int*))hand->pointer)((struct tpkgNode*)hand->position,middle,0,&move,size);
+					result=((int(*)(struct tpkgNode*,char**,int,int,char**,int*))hand->handp)((struct tpkgNode*)hand->nodep,middle,hand->nodecount,0,&move,size);
 					if(result==-1)
 						return -1;
 				}
 				else
 				{
 					int count;
-					result=fmmpValGet((hand-1)->argument,0,&count,0);
+					result=fmmpValGet((hand-1)->handargs,0,&count,0);
 					if(result==-1)
 						return -1;
 
-					int i;
-					for(i=0;i<count;i++)
+					for(j=0;j<count;j++)
 					{
-						result=((int(*)(struct tpkgNode*,char**,int,char**,int*))hand->pointer)((struct tpkgNode*)hand->position,middle,i,&move,size);
+						result=((int(*)(struct tpkgNode*,char**,int,int,char**,int*))hand->handp)((struct tpkgNode*)hand->nodep,middle,hand->nodecount,j,&move,size);
 						if(result==-1)
 							return -1;
 					}
@@ -1360,35 +1355,35 @@ int fpkgEnc(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int *size)
 			}
 			else
 			{
-				result=((int(*)(char**,char**,int*,char*))hand->pointer)(fmldata,tmpdata,size,hand->argument);
+				result=((int(*)(char**,char**,int*,char*))hand->handp)(fmldata,tmpdata,size,hand->handargs);
 				if(result==-1)
 					return -1;
 			}
 
-			if(hand->package=='-')
+			if(hand->visual=='-')
 			{
-				flogDepend("#[%-15s][%4d][%.*s]",hand->name,*size,*size,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->handname,*size,*size,*fmldata);
 			}
 			else
-			if(hand->package=='+')
+			if(hand->visual=='+')
 			{
 				fpkgHexEnc(fmldata,tmpdata,size,"upper");
-				flogDepend("#[%-15s][%4d][%.*s]",hand->name,*size/2,*size,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->handname,*size/2,*size,*fmldata);
 				mpkgSwap(*fmldata,*tmpdata);
 				*size/=2;
 			}
 		}
 
-		if(hand->feature!=0X20)
+		if(hand->middle!=0X20)
 		{
-			middle[hand->feature-0X21]=(char*)malloc(sizeof(short)+*size);
-			if(middle[hand->feature-0X21]==NULL)
+			middle[hand->middle]=(char*)malloc(sizeof(short)+*size);
+			if(middle[hand->middle]==NULL)
 			{
 				mlogError("malloc",0,"0","[%d]",sizeof(short)+*size);
 				return -1;
 			}
-			*(short*)middle[hand->feature-0X21]=*size;
-			memcpy(middle[hand->feature-0X21]+sizeof(short),*fmldata,*size);
+			*(short*)middle[hand->middle]=*size;
+			memcpy(middle[hand->middle]+sizeof(short),*fmldata,*size);
 		}
 
 		hand--;
@@ -1411,6 +1406,9 @@ int fpkgDec(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int size)
 {
 	int result;
 
+	int i;
+	int j;
+
 	char pkgcode[32];
 	sprintf(pkgcode,"%s_%s_DECODE",lnkcode,trncode);
 
@@ -1419,72 +1417,68 @@ int fpkgDec(char *lnkcode,char *trncode,char **fmldata,char **tmpdata,int size)
 	if(rule==NULL)
 		return -100;
 	struct tpkgHand *hand;
-	hand=(struct tpkgHand*)rule->position;
+	hand=(struct tpkgHand*)rule->handp;
 
 	char *middle[16];
 
-	while(1)
+	for(i=0;i<rule->handcount;i++)
 	{
-		if(*(char*)hand=='\0')
-			break;
-
-		if(hand->feature!=0X20)
+		if(hand->middle!=0X20)
 		{
-			size=*(short*)middle[hand->feature-0X21];
-			memcpy(*fmldata,middle[hand->feature-0X21]+sizeof(short),size);
-			free(middle[hand->feature-0X21]);
+			size=*(short*)middle[hand->middle];
+			memcpy(*fmldata,middle[hand->middle]+sizeof(short),size);
+			free(middle[hand->middle]);
 		}
 
-		if(strcmp(hand->name,"array")!=0)
+		if(strcmp(hand->handname,"array")!=0)
 		{
-			if(hand->package=='-')
+			if(hand->visual=='-')
 			{
-				flogDepend("#[%-15s][%4d][%.*s]",hand->name,size,size,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->handname,size,size,*fmldata);
 			}
 			else
-			if(hand->package=='+')
+			if(hand->visual=='+')
 			{
 				fpkgHexEnc(fmldata,tmpdata,&size,"upper");
-				flogDepend("#[%-15s][%4d][%.*s]",hand->name,size/2,size,*fmldata);
+				flogDepend("#[%-15s][%4d][%.*s]",hand->handname,size/2,size,*fmldata);
 				mpkgSwap(*fmldata,*tmpdata);
 				size/=2;
 			}
 
 			if
 			(
-				strncmp(hand->name,"fpkgVar",7)==0||
-				strncmp(hand->name,"fpkgFix",7)==0||
-				strncmp(hand->name,"fpkgXml",7)==0||
-				strncmp(hand->name,"fpkgJsn",7)==0
+				strncmp(hand->handname,"fpkgVar",7)==0||
+				strncmp(hand->handname,"fpkgFix",7)==0||
+				strncmp(hand->handname,"fpkgXml",7)==0||
+				strncmp(hand->handname,"fpkgJsn",7)==0
 			)
 			{
 				char *move;
 				move=*fmldata;
 
-				if(strcmp((hand-1)->name,"array")!=0)
+				if(strcmp((hand-1)->handname,"array")!=0)
 				{
-					result=((int(*)(struct tpkgNode*,char**,int,char**,int))hand->pointer)((struct tpkgNode*)hand->position,middle,0,&move,size);
+					result=((int(*)(struct tpkgNode*,char**,int,int,char**,int))hand->handp)((struct tpkgNode*)hand->nodep,middle,hand->nodecount,0,&move,size);
 					if(result==-1)
 						return -1;
 				}
 				else
 				{
-					int i;
-					for(i=0;size>move-*fmldata;i++)
+					for(j=0;size>move-*fmldata;j++)
 					{
-						result=((int(*)(struct tpkgNode*,char**,int,char**,int))hand->pointer)((struct tpkgNode*)hand->position,middle,i,&move,size-(move-*fmldata));
+						result=((int(*)(struct tpkgNode*,char**,int,int,char**,int))hand->handp)((struct tpkgNode*)hand->nodep,middle,hand->nodecount,j,&move,size-(move-*fmldata));
 						if(result==-1)
 							return -1;
 					}
 
-					result=fmmpValSet((hand-1)->argument,0,&i,0);
+					result=fmmpValSet((hand-1)->handargs,0,&i,0);
 					if(result==-1)
 						return -1;
 				}
 			}
 			else
 			{
-				result=((int(*)(char**,char**,int*,char*))hand->pointer)(fmldata,tmpdata,&size,hand->argument);
+				result=((int(*)(char**,char**,int*,char*))hand->handp)(fmldata,tmpdata,&size,hand->handargs);
 				if(result==-1)
 					return -1;
 			}
