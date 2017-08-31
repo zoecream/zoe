@@ -17,13 +17,10 @@ SOURCE+=$(wildcard $(SRVSRCPATH)/*.c)
 SOURCE+=$(wildcard $(INSSRCPATH)/*.c)
 SOURCE+=$(wildcard $(MODINCPATH)/*.h)
 
-EXCEPT+=$(MODSRCPATH)/xml.c
-EXCEPT+=$(UNTSRCPATH)/xml.c
-
-TARGET+=$(patsubst $(MODSRCPATH)/%.c,$(MODLIBPATH)/lib%.a,$(filter-out $(EXCEPT),$(wildcard $(MODSRCPATH)/*.c)))
-TARGET+=$(patsubst $(UNTSRCPATH)/%.c,$(UNTBINPATH)/%,$(filter-out $(EXCEPT),$(wildcard $(UNTSRCPATH)/*.c)))
-TARGET+=$(patsubst $(INSSRCPATH)/%.c,$(INSBINPATH)/%,$(filter-out $(EXCEPT),$(wildcard $(INSSRCPATH)/*.c)))
-TARGET+=$(patsubst $(SRVSRCPATH)/%.c,$(SRVBINPATH)/%,$(filter-out $(EXCEPT),$(wildcard $(SRVSRCPATH)/*.c)))
+TARGET+=$(patsubst $(MODSRCPATH)/%.c,$(MODLIBPATH)/lib%.a,$(wildcard $(MODSRCPATH)/*.c))
+TARGET+=$(patsubst $(UNTSRCPATH)/%.c,$(UNTBINPATH)/%,$(wildcard $(UNTSRCPATH)/*.c))
+TARGET+=$(patsubst $(INSSRCPATH)/%.c,$(INSBINPATH)/%,$(wildcard $(INSSRCPATH)/*.c))
+TARGET+=$(patsubst $(SRVSRCPATH)/%.c,$(SRVBINPATH)/%,$(wildcard $(SRVSRCPATH)/*.c))
 
 OPTION?=-O0 -g
 OPTION?=-O3 -DNDEBUG
