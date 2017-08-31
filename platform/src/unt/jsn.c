@@ -17,232 +17,216 @@ int main(void)
 	struct tjsnItem *item2;
 	struct tjsnItem *item3;
 
-	char pd[1024];
-	int pl;
-	char *move;
+	char data[1024];
 
 	//测试对象节点打包.
-	result=fjsnObjCreate(&item1,NULL,0);
+	result=fjsnCreate(&item1,cjsnObj,NULL,0,NULL,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnStrCreate(&item2,"a",1,"1",1);
+	result=fjsnCreate(&item2,cjsnStr,"a",1,"1",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnStrCreate(&item2,"b",1,"2",1);
+	result=fjsnCreate(&item2,cjsnStr,"b",1,"2",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnObjCreate(&item2,"c",1);
+	result=fjsnCreate(&item2,cjsnObj,"c",1,NULL,0);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnNumCreate(&item3,"d",1,"4",1);
+	result=fjsnCreate(&item3,cjsnNum,"d",1,"4",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnNumCreate(&item3,"e",1,"5.5555",6);
+	result=fjsnCreate(&item3,cjsnNum,"e",1,"5.5555",6);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnArrCreate(&item2,"f",1);
+	result=fjsnCreate(&item2,cjsnArr,"f",1,NULL,0);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,NULL,0,"7",1);
+	result=fjsnCreate(&item3,cjsnStr,NULL,0,"7",1);
 	if(result!=0)
 		return -1;
-	fjsnArrInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,NULL,0,"8",1);
+	result=fjsnCreate(&item3,cjsnStr,NULL,0,"8",1);
 	if(result!=0)
 		return -1;
-	fjsnArrInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	move=pd;
-	result=fjsnExport(item1,&move,&pl);
+	result=fjsnExport(item1,data);
 	if(result!=0)
 		return -1;
-	printf("%.*s\n",pl,pd);
+	printf("%s\n",data);
 
 	fjsnFree(item1);
 
 	printf("========================================\n");
 	
 	//测试对象节点解包.
-	result=fjsnObjCreate(&item1,NULL,0);
+	printf("%s\n",data);
+	result=fjsnImport(&item1,data);
 	if(result!=0)
 		return -1;
 
-	printf("%.*s\n",pl,pd);
+	result=fjsnSelect(item1,&item2,"a",1,0);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",item2->valsize,item2->valdata);
 
-	move=pd;
-	result=fjsnImport(item1,&move,pl);
+	result=fjsnSelect(item1,&item2,"b",1,0);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",item2->valsize,item2->valdata);
+
+	result=fjsnSelect(item1,&item2,"c",1,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnObjSelect(item1,&item2,"a",1);
+	result=fjsnSelect(item2,&item3,"d",1,0);
 	if(result!=0)
 		return -1;
-	printf("a:%.*s\n",item2->vall,item2->vald);
+	printf("d:%.*s\n",item3->valsize,item3->valdata);
 
-	result=fjsnObjSelect(item1,&item2,"b",1);
+	result=fjsnSelect(item2,&item3,"e",1,0);
 	if(result!=0)
 		return -1;
-	printf("b:%.*s\n",item2->vall,item2->vald);
+	printf("e:%.*s\n",item3->valsize,item3->valdata);
 
-	result=fjsnObjSelect(item1,&item2,"c",1);
-	if(result!=0)
-		return -1;
-
-	result=fjsnObjSelect(item2,&item3,"d",1);
-	if(result!=0)
-		return -1;
-	printf("d:%.*s\n",item3->vall,item3->vald);
-
-	result=fjsnObjSelect(item2,&item3,"e",1);
-	if(result!=0)
-		return -1;
-	printf("e:%.*s\n",item3->vall,item3->vald);
-
-	result=fjsnObjSelect(item1,&item2,"f",1);
+	result=fjsnSelect(item1,&item2,"f",1,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnArrSelect(item2,&item3,0);
+	result=fjsnSelect(item2,&item3,NULL,0,0);
 	if(result!=0)
 		return -1;
-	printf("g:%.*s\n",item3->vall,item3->vald);
+	printf("f:%.*s\n",item3->valsize,item3->valdata);
 
-	result=fjsnArrSelect(item2,&item3,1);
+	result=fjsnSelect(item2,&item3,NULL,0,1);
 	if(result!=0)
 		return -1;
-	printf("h:%.*s\n",item3->vall,item3->vald);
+	printf("f:%.*s\n",item3->valsize,item3->valdata);
 
 	fjsnFree(item1);
 
 	printf("========================================\n");
 
 	//测试数组节点打包.
-	result=fjsnArrCreate(&item1,NULL,0);
+	result=fjsnCreate(&item1,cjsnArr,NULL,0,NULL,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnObjCreate(&item2,NULL,0);
+	result=fjsnCreate(&item2,cjsnObj,NULL,0,NULL,0);
 	if(result!=0)
 		return -1;
-	fjsnArrInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"a",1,"1",1);
+	result=fjsnCreate(&item3,cjsnStr,"a",1,"1",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"b",1,"2",1);
+	result=fjsnCreate(&item3,cjsnStr,"b",1,"2",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnObjCreate(&item2,NULL,0);
+	result=fjsnCreate(&item2,cjsnObj,NULL,0,NULL,0);
 	if(result!=0)
 		return -1;
-	fjsnArrInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"a",1,"3",1);
+	result=fjsnCreate(&item3,cjsnStr,"a",1,"3",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"b",1,"4",1);
+	result=fjsnCreate(&item3,cjsnStr,"b",1,"4",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnObjCreate(&item2,NULL,0);
+	result=fjsnCreate(&item2,cjsnObj,NULL,0,NULL,0);
 	if(result!=0)
 		return -1;
-	fjsnArrInsert(item1,item2);
+	fjsnInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"a",1,"5",1);
+	result=fjsnCreate(&item3,cjsnStr,"a",1,"5",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"b",1,"6",1);
+	result=fjsnCreate(&item3,cjsnStr,"b",1,"6",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3);
+	fjsnInsert(item2,item3);
 
-	move=pd;
-	result=fjsnExport(item1,&move,&pl);
+	result=fjsnExport(item1,data);
 	if(result!=0)
 		return -1;
-	printf("%.*s\n",pl,pd);
+	printf("%s\n",data);
 
 	fjsnFree(item1);
 
 	printf("========================================\n");
 	
 	//测试数组节点解包.
-	result=fjsnObjCreate(&item1,NULL,0);
+	printf("%s\n",data);
+	result=fjsnImport(&item1,data);
 	if(result!=0)
 		return -1;
 
-	printf("%.*s\n",pl,pd);
-
-	move=pd;
-	result=fjsnImport(item1,&move,pl);
+	result=fjsnSelect(item1,&item2,NULL,0,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnArrSelect(item1,&item2,0);
+	result=fjsnSelect(item2,&item3,"a",1,0);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",item3->valsize,item3->valdata);
+
+	result=fjsnSelect(item2,&item3,"b",1,0);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",item3->valsize,item3->valdata);
+
+	result=fjsnSelect(item1,&item2,NULL,0,1);
 	if(result!=0)
 		return -1;
 
-	result=fjsnObjSelect(item2,&item3,"a",1);
+	result=fjsnSelect(item2,&item3,"a",1,0);
 	if(result!=0)
 		return -1;
-	printf("a:%.*s\n",item3->vall,item3->vald);
+	printf("a:%.*s\n",item3->valsize,item3->valdata);
 
-	result=fjsnObjSelect(item2,&item3,"b",1);
+	result=fjsnSelect(item2,&item3,"b",1,0);
 	if(result!=0)
 		return -1;
-	printf("b:%.*s\n",item3->vall,item3->vald);
+	printf("b:%.*s\n",item3->valsize,item3->valdata);
 
-	result=fjsnArrSelect(item1,&item2,1);
-	if(result!=0)
-		return -1;
-
-	result=fjsnObjSelect(item2,&item3,"a",1);
-	if(result!=0)
-		return -1;
-	printf("c:%.*s\n",item3->vall,item3->vald);
-
-	result=fjsnObjSelect(item2,&item3,"b",1);
-	if(result!=0)
-		return -1;
-	printf("d:%.*s\n",item3->vall,item3->vald);
-
-	result=fjsnArrSelect(item1,&item2,2);
+	result=fjsnSelect(item1,&item2,NULL,0,2);
 	if(result!=0)
 		return -1;
 
-	result=fjsnObjSelect(item2,&item3,"a",1);
+	result=fjsnSelect(item2,&item3,"a",1,0);
 	if(result!=0)
 		return -1;
-	printf("e:%.*s\n",item3->vall,item3->vald);
+	printf("a:%.*s\n",item3->valsize,item3->valdata);
 
-	result=fjsnObjSelect(item2,&item3,"b",1);
+	result=fjsnSelect(item2,&item3,"b",1,0);
 	if(result!=0)
 		return -1;
-	printf("f:%.*s\n",item3->vall,item3->vald);
+	printf("b:%.*s\n",item3->valsize,item3->valdata);
 
 	fjsnFree(item1);
 

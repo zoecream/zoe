@@ -41,10 +41,10 @@ void fxmlFree(struct txmlItem *item)
 		fxmlFree(item->attrchld);
 	if(item->next)
 		fxmlFree(item->next);
-	if(item->keyd)
-		free(item->keyd);
-	if(item->vald)
-		free(item->vald);
+	if(item->keydata)
+		free(item->keydata);
+	if(item->valdata)
+		free(item->valdata);
 	free(item);
 }
 
@@ -59,28 +59,28 @@ void fxmlFree(struct txmlItem *item)
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlCreate(struct txmlItem **item,int type,char *keyd,int keyl,char *vald,int vall)
+int fxmlCreate(struct txmlItem **item,int type,char *keydata,int keysize,char *valdata,int valsize)
 {
 	int result;
 	result=fxmlInit(item);
 	if(result!=0)
 		return -1;
 	(*item)->type=type;
-	if(keyd!=NULL&&keyl!=0)
+	if(keydata!=NULL&&keysize!=0)
 	{
-		(*item)->keyd=(char*)malloc(keyl);
-		if((*item)->keyd==NULL)
+		(*item)->keydata=(char*)malloc(keysize);
+		if((*item)->keydata==NULL)
 			return -1;
-		memcpy((*item)->keyd,keyd,keyl);
-		(*item)->keyl=keyl;
+		memcpy((*item)->keydata,keydata,keysize);
+		(*item)->keysize=keysize;
 	}
-	if(vald!=NULL&&vall!=0)
+	if(valdata!=NULL&&valsize!=0)
 	{
-		(*item)->vald=(char*)malloc(vall);
-		if((*item)->vald==NULL)
+		(*item)->valdata=(char*)malloc(valsize);
+		if((*item)->valdata==NULL)
 			return -1;
-		memcpy((*item)->vald,vald,vall);
-		(*item)->vall=vall;
+		memcpy((*item)->valdata,valdata,valsize);
+		(*item)->valsize=valsize;
 	}
 	return 0;
 }
@@ -129,7 +129,7 @@ void fxmlInsert(struct txmlItem *target,struct txmlItem *insert,int type)
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *keyd,int keyl,int index)
+int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *keydata,int keysize,int index)
 {
 	if(type==cxmlNode)
 		*select=target->nodechld;
@@ -140,7 +140,7 @@ int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *k
 	{
 		if(*select==NULL)
 			return -1;
-		if(strncmp((*select)->keyd,keyd,keyl)==0&&(*select)->keyl==keyl)
+		if(strncmp((*select)->keydata,keydata,keysize)==0&&(*select)->keysize==keysize)
 			if(index==0)
 				return 0;
 			else
@@ -152,88 +152,91 @@ int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *k
 /*========================================*\
     功能 : 导出ATTR类型节点
     参数 : (输入)节点
-           (出入)位置
+           (出入)报文
     返回 : 空
 \*========================================*/
-void fxmlAttrExport(struct txmlItem *item,char **dst)
+void fxmlAttrExport(struct txmlItem *item,char **data)
 {
-	*dst+=sprintf(*dst,"%.*s=\"%.*s\"",item->keyl,item->keyd,item->vall,item->vald);
+	*data+=sprintf(*data,"%.*s=\"%.*s\"",item->keysize,item->keydata,item->valsize,item->valdata);
 }
 
 /*========================================*\
     功能 : 导出NODE类型节点
     参数 : (输入)节点
-           (出入)位置
+           (出入)报文
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlNodeExport(struct txmlItem *item,char **dst)
+int fxmlNodeExport(struct txmlItem *item,char **data)
 {
 	int result;
-	*(*dst)++='<';
-	*dst+=sprintf(*dst,"%.*s",item->keyl,item->keyd);
-	struct txmlItem *current;
-	current=item->attrchld;
+
+	*(*data)++='<';
+	*data+=sprintf(*data,"%.*s",item->keysize,item->keydata);
+	struct txmlItem *temp;
+	temp=item->attrchld;
 	while(1)
 	{
-		if(current==NULL)
+		if(temp==NULL)
 			break;
-		*(*dst)++=' ';
-		fxmlAttrExport(current,dst);
-		current=current->next;
+		*(*data)++=' ';
+		fxmlAttrExport(temp,data);
+		temp=temp->next;
 	}
-	*(*dst)++='>';
-	*dst+=sprintf(*dst,"%.*s",item->vall,item->vald);
-	current=item->nodechld;
+	*(*data)++='>';
+	*data+=sprintf(*data,"%.*s",item->valsize,item->valdata);
+	temp=item->nodechld;
 	while(1)
 	{
-		if(current==NULL)
+		if(temp==NULL)
 			break;
-		result=fxmlNodeExport(current,dst);
+		result=fxmlNodeExport(temp,data);
 		if(result!=0)
 			return -1;
-		current=current->next;
+		temp=temp->next;
 	}
-	*(*dst)++='<';
-	*(*dst)++='/';
-	*dst+=sprintf(*dst,"%.*s",item->keyl,item->keyd);
-	*(*dst)++='>';
+	*(*data)++='<';
+	*(*data)++='/';
+	*data+=sprintf(*data,"%.*s",item->keysize,item->keydata);
+	*(*data)++='>';
+	**data='\0';
+
 	return 0;
 }
 
 /*========================================*\
     功能 : 导入ATTR类型节点
     参数 : (输出)节点
-           (出入)位置
+           (出入)报文
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlAttrImport(struct txmlItem **item,char **src)
+int fxmlAttrImport(struct txmlItem **item,char **data)
 {
 	int result;
 
 	result=fxmlInit(item);
 	if(result!=0)
 		return -1;
-	(*item)->keyl=mxmlSize(src,cxmlSpace"=");
-	(*item)->keyd=(char*)malloc((*item)->keyl);
-	if((*item)->keyd==NULL)
+	(*item)->keysize=mxmlSize(data,cxmlSpace"=");
+	(*item)->keydata=(char*)malloc((*item)->keysize);
+	if((*item)->keydata==NULL)
 		return -1;
-	memcpy((*item)->keyd,*src,(*item)->keyl);
-	*src+=(*item)->keyl;
-	mxmlSkip(src,cxmlSpace);
-	if(*(*src)++!='=')
+	memcpy((*item)->keydata,*data,(*item)->keysize);
+	*data+=(*item)->keysize;
+	mxmlSkip(data,cxmlSpace);
+	if(*(*data)++!='=')
 		return -1;
-	mxmlSkip(src,cxmlSpace);
-	if(*(*src)++!='\"')
+	mxmlSkip(data,cxmlSpace);
+	if(*(*data)++!='\"')
 		return -1;
-	(*item)->vall=mxmlSize(src,"\"");
-	(*item)->vald=(char*)malloc((*item)->vall);
-	if((*item)->vald==NULL)
+	(*item)->valsize=mxmlSize(data,"\"");
+	(*item)->valdata=(char*)malloc((*item)->valsize);
+	if((*item)->valdata==NULL)
 		return -1;
-	memcpy((*item)->vald,*src,(*item)->vall);
-	*src+=(*item)->vall;
-	(*src)++;
+	memcpy((*item)->valdata,*data,(*item)->valsize);
+	*data+=(*item)->valsize;
+	(*data)++;
 
 	return 0;
 }
@@ -241,60 +244,60 @@ int fxmlAttrImport(struct txmlItem **item,char **src)
 /*========================================*\
     功能 : 导入NODE类型节点
     参数 : (输出)节点
-           (出入)位置
+           (出入)报文
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlNodeImport(struct txmlItem **item,char **src)
+int fxmlNodeImport(struct txmlItem **item,char **data)
 {
 	int result;
 
-	if(*(*src)++!='<')
+	if(*(*data)++!='<')
 		return -1;
 	result=fxmlInit(item);
 	if(result!=0)
 		return -1;
-	(*item)->keyl=mxmlSize(src,cxmlSpace">");
-	(*item)->keyd=(char*)malloc((*item)->keyl);
-	if((*item)->keyd==NULL)
+	(*item)->keysize=mxmlSize(data,cxmlSpace">");
+	(*item)->keydata=(char*)malloc((*item)->keysize);
+	if((*item)->keydata==NULL)
 		return -1;
-	memcpy((*item)->keyd,*src,(*item)->keyl);
-	*src+=(*item)->keyl;
+	memcpy((*item)->keydata,*data,(*item)->keysize);
+	*data+=(*item)->keysize;
 	while(1)
 	{
-		mxmlSkip(src,cxmlSpace);
-		if(**src=='>')
+		mxmlSkip(data,cxmlSpace);
+		if(**data=='>')
 			break;
 		struct txmlItem *temp;
-		result=fxmlAttrImport(&temp,src);
+		result=fxmlAttrImport(&temp,data);
 		if(result!=0)
 			return -1;
 		fxmlInsert((*item),temp,cxmlAttr);
 	}
-	(*src)++;
+	(*data)++;
 	while(1)
 	{
-		mxmlSkip(src,cxmlSpace);
-		if(**src=='<'&&*(*src+1)=='/')
+		mxmlSkip(data,cxmlSpace);
+		if(**data=='<'&&*(*data+1)=='/')
 			break;
-		if(**src!='<')
+		if(**data!='<')
 		{
-			(*item)->vall=mxmlSize(src,"<");
-			(*item)->vald=(char*)malloc((*item)->vall);
-			if((*item)->vald==NULL)
+			(*item)->valsize=mxmlSize(data,"<");
+			(*item)->valdata=(char*)malloc((*item)->valsize);
+			if((*item)->valdata==NULL)
 				return -1;
-			memcpy((*item)->vald,*src,(*item)->vall);
-			*src+=(*item)->vall;
+			memcpy((*item)->valdata,*data,(*item)->valsize);
+			*data+=(*item)->valsize;
 			continue;
 		}
 		struct txmlItem *temp;
-		result=fxmlNodeImport(&temp,src);
+		result=fxmlNodeImport(&temp,data);
 		if(result!=0)
 			return -1;
 		fxmlInsert((*item),temp,cxmlNode);
 	}
-	(*src)+=(*item)->keyl;
-	(*src)+=3;
+	(*data)+=(*item)->keysize;
+	(*data)+=3;
 
 	return 0;
 }
@@ -302,42 +305,35 @@ int fxmlNodeImport(struct txmlItem **item,char **src)
 /*========================================*\
     功能 : 将节点导出到报文
     参数 : (输入)节点
-           (出入)报文数据
-           (输出)报文长度
+           (输出)报文
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlExport(struct txmlItem *item,char **pd,int *pl)
+int fxmlExport(struct txmlItem *item,char *data)
 {
-	char *record;
-	record=*pd;
+	char *temp;
+	temp=data;
 	int result;
-	result=fxmlNodeExport(item,pd);
+	result=fxmlNodeExport(item,&temp);
 	if(result!=0)
 		return -1;
-	*pl=*pd-record;
 	return 0;
 }
 
 /*========================================*\
     功能 : 将报文导入到节点
     参数 : (输出)节点
-           (出入)报文数据
-           (输入)报文长度
+           (输入)报文
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlImport(struct txmlItem **item,char **pd,int pl)
+int fxmlImport(struct txmlItem **item,char *data)
 {
-	char *record;
-	record=*pd;
-	mxmlSkip(pd,cxmlSpace);
+	char *temp;
+	temp=data;
 	int result;
-	result=fxmlNodeImport(item,pd);
+	result=fxmlNodeImport(item,&temp);
 	if(result!=0)
-		return -1;
-	mxmlSkip(pd,cxmlSpace);
-	if(*pd-record!=pl)
 		return -1;
 	return 0;
 }
