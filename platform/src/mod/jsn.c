@@ -61,6 +61,8 @@ void fjsnFree(struct tjsnItem *item)
 		fjsnFree(item->next);
 	if(item->vald)
 		free(item->vald);
+	if(item->keyd)
+		free(item->keyd);
 	free(item);
 }
 
@@ -176,7 +178,10 @@ void fjsnArrInsert(struct tjsnItem *arr,struct tjsnItem *item)
 \*========================================*/
 void fjsnObjInsert(struct tjsnItem *obj,struct tjsnItem *item,char *keyd,int keyl)
 {
-	item->keyd=keyd;
+	item->keyd=(char*)malloc(keyl);
+	if(item->keyd==NULL)
+		return -1;
+	memcpy(item->keyd,keyd,keyl);
 	item->keyl=keyl;
 	struct tjsnItem *temp;
 	temp=obj->chld;
@@ -331,13 +336,14 @@ int fjsnAllExport(struct tjsnItem *item,char **dst)
     功能 : 导入KEY类型节点
     参数 : (输入)数据结构节点
            (出入)起始结束位置
-    返回 : 空
+    返回 : (成功)0
+           (失败)-1
 \*========================================*/
-void fjsnKeyImport(struct tjsnItem *item,char **src)
+int fjsnKeyImport(struct tjsnItem *item,char **src)
 {
-	item->keyd=*src+1;
-
 	(*src)++;
+	char *record;
+	record=*src;
 	while(1)
 	{
 		int escape;
@@ -350,10 +356,15 @@ void fjsnKeyImport(struct tjsnItem *item,char **src)
 			break;
 
 		(*src)++;
-
 		item->keyl++;
 	}
 	(*src)++;
+
+	item->keyd=(char*)malloc(item->keyl);
+	if(item->keyd==NULL)
+		return -1;
+	memcpy(item->keyd,record,item->keyl);
+	return 0;
 }
 /*========================================*\
     功能 : 导入字符类型节点
@@ -364,10 +375,9 @@ void fjsnKeyImport(struct tjsnItem *item,char **src)
 \*========================================*/
 int fjsnStrImport(struct tjsnItem *item,char **src)
 {
-	char *record;
-	record=*src+1;
-
 	(*src)++;
+	char *record;
+	record=*src;
 	while(1)
 	{
 		int escape;
@@ -380,7 +390,6 @@ int fjsnStrImport(struct tjsnItem *item,char **src)
 			break;
 
 		(*src)++;
-
 		item->vall++;
 	}
 	(*src)++;
@@ -389,7 +398,6 @@ int fjsnStrImport(struct tjsnItem *item,char **src)
 	if(item->vald==NULL)
 		return -1;
 	memcpy(item->vald,record,item->vall);
-
 	return 0;
 }
 
@@ -475,7 +483,11 @@ int fjsnObjImport(struct tjsnItem *item,char **src)
 		current->next=item->chld;
 		item->chld=current;
 		mjsnSkip(src);
-		fjsnKeyImport(current,src);
+		if(**src!='\"')
+			return -1;
+		result=fjsnKeyImport(current,src);
+		if(result!=0)
+			return -1;
 		mjsnSkip(src);
 		if(*(*src)++!=':')
 			return -1;
@@ -615,10 +627,12 @@ int fjsnImport(struct tjsnItem *item,char **pd,int pl)
 {
 	char *record;
 	record=*pd;
+	mjsnSkip(pd);
 	int result;
 	result=fjsnAllImport(item,pd);
 	if(result!=0)
 		return -1;
+	mjsnSkip(pd);
 	if(*pd-record!=pl)
 		return -1;
 	return 0;
