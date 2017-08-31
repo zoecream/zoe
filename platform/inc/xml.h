@@ -15,10 +15,10 @@ struct txmlItem
 	struct txmlItem *nodechld;
 	struct txmlItem *attrchld;
 	struct txmlItem *next;
-	char *keyd;
-	int keyl;
-	char *vald;
-	int vall;
+	char *keydata;
+	int keysize;
+	char *valdata;
+	int valsize;
 };
 
 /*========================================*\
@@ -46,7 +46,7 @@ void fxmlFree(struct txmlItem *item);
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlCreate(struct txmlItem **item,int type,char *keyd,int keyl,char *vald,int vall);
+int fxmlCreate(struct txmlItem **item,int type,char *keydata,int keysize,char *valdata,int valsize);
 /*========================================*\
     功能 : 插入节点
     参数 : (输入)目标节点
@@ -66,25 +66,23 @@ void fxmlInsert(struct txmlItem *target,struct txmlItem *insert,int type);
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *keyd,int keyl,int index);
+int fxmlSelect(struct txmlItem *target,struct txmlItem **select,int type,char *keydata,int keysize,int index);
 
 /*========================================*\
     功能 : 将节点导出到报文
     参数 : (输入)节点
-           (出入)报文数据
-           (输出)报文长度
+           (输入)报文
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlExport(struct txmlItem *item,char **pd,int *pl);
+int fxmlExport(struct txmlItem *item,char *data);
 /*========================================*\
     功能 : 将报文导入到节点
     参数 : (输出)节点
-           (出入)报文数据
-           (输入)报文长度
+           (输入)报文数据
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlImport(struct txmlItem **item,char **pd,int pl);
+int fxmlImport(struct txmlItem **item,char *data);
 
 #endif

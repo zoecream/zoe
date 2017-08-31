@@ -17,9 +17,7 @@ int main(void)
 	struct txmlItem *item2;
 	struct txmlItem *item3;
 
-	char pd[1024];
-	int pl;
-	char *move;
+	char data[1024];
 
 	//测试对象节点打包.
 	result=fxmlCreate(&item1,cxmlNode,"root",4,NULL,0);
@@ -61,33 +59,30 @@ int main(void)
 		return -1;
 	fxmlInsert(item1,item2,cxmlNode);
 
-	move=pd;
-	result=fxmlExport(item1,&move,&pl);
+	result=fxmlExport(item1,data);
 	if(result!=0)
 		return -1;
-	printf("%.*s\n",pl,pd);
+	printf("%s\n",data);
 
 	fxmlFree(item1);
 
 	printf("========================================\n");
 	
 	//测试对象节点解包.
-	printf("%.*s\n",pl,pd);
-
-	move=pd;
-	result=fxmlImport(&item1,&move,pl);
+	printf("%s\n",data);
+	result=fxmlImport(&item1,data);
 	if(result!=0)
 		return -1;
 
 	result=fxmlSelect(item1,&item2,cxmlNode,"a",1,0);
 	if(result!=0)
 		return -1;
-	printf("a:%.*s\n",item2->vall,item2->vald);
+	printf("a:%.*s\n",item2->valsize,item2->valdata);
 
 	result=fxmlSelect(item1,&item2,cxmlNode,"b",1,0);
 	if(result!=0)
 		return -1;
-	printf("b:%.*s\n",item2->vall,item2->vald);
+	printf("b:%.*s\n",item2->valsize,item2->valdata);
 
 	result=fxmlSelect(item1,&item2,cxmlNode,"c",1,0);
 	if(result!=0)
@@ -96,22 +91,22 @@ int main(void)
 	result=fxmlSelect(item2,&item3,cxmlAttr,"d",1,0);
 	if(result!=0)
 		return -1;
-	printf("d:%.*s\n",item3->vall,item3->vald);
+	printf("d:%.*s\n",item3->valsize,item3->valdata);
 
 	result=fxmlSelect(item2,&item3,cxmlAttr,"e",1,0);
 	if(result!=0)
 		return -1;
-	printf("e:%.*s\n",item3->vall,item3->vald);
+	printf("e:%.*s\n",item3->valsize,item3->valdata);
 
 	result=fxmlSelect(item1,&item2,cxmlNode,"f",1,0);
 	if(result!=0)
 		return -1;
-	printf("f:%.*s\n",item2->vall,item2->vald);
+	printf("f:%.*s\n",item2->valsize,item2->valdata);
 
 	result=fxmlSelect(item1,&item2,cxmlNode,"f",1,1);
 	if(result!=0)
 		return -1;
-	printf("f:%.*s\n",item2->vall,item2->vald);
+	printf("f:%.*s\n",item2->valsize,item2->valdata);
 
 	fxmlFree(item1);
 
