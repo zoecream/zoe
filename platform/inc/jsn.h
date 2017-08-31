@@ -34,35 +34,43 @@ void fjsnFree(struct tjsnItem *item);
 /*========================================*\
     功能 : 创建字符类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnStrCreate(struct tjsnItem **item,char *vald,int vall);
+int fjsnStrCreate(struct tjsnItem **item,char *keyd,int keyl,char *vald,int vall);
 /*========================================*\
     功能 : 创建数值类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnNumCreate(struct tjsnItem **item,char *vald,int vall);
+int fjsnNumCreate(struct tjsnItem **item,char *keyd,int keyl,char *vald,int vall);
 /*========================================*\
     功能 : 创建数组类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnArrCreate(struct tjsnItem **item);
+int fjsnArrCreate(struct tjsnItem **item,char *keyd,int keyl);
 /*========================================*\
     功能 : 创建对象类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnObjCreate(struct tjsnItem **item);
+int fjsnObjCreate(struct tjsnItem **item,char *keyd,int keyl);
 
 /*========================================*\
     功能 : 插入数组类型节点
@@ -75,11 +83,9 @@ void fjsnArrInsert(struct tjsnItem *arr,struct tjsnItem *item);
     功能 : 插入对象类型节点
     参数 : (输入)对象节点
            (输入)插入节点
-           (输入)键数据
-           (输入)键长度
     返回 : 空
 \*========================================*/
-void fjsnObjInsert(struct tjsnItem *obj,struct tjsnItem *item,char *keyd,int keyl);
+void fjsnObjInsert(struct tjsnItem *obj,struct tjsnItem *item);
 
 /*========================================*\
     功能 : 查询数组类型节点

@@ -21,47 +21,47 @@ int main(void)
 	int pl;
 	char *move;
 
-	//测试对象头节点打包.
-	result=fjsnObjCreate(&item1);
+	//测试对象节点打包.
+	result=fjsnObjCreate(&item1,NULL,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnStrCreate(&item2,"1",1);
+	result=fjsnStrCreate(&item2,"a",1,"1",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2,"a",1);
+	fjsnObjInsert(item1,item2);
 
-	result=fjsnStrCreate(&item2,"2",1);
+	result=fjsnStrCreate(&item2,"b",1,"2",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2,"b",1);
+	fjsnObjInsert(item1,item2);
 
-	result=fjsnObjCreate(&item2);
+	result=fjsnObjCreate(&item2,"c",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2,"c",1);
+	fjsnObjInsert(item1,item2);
 
-	result=fjsnNumCreate(&item3,"4",1);
+	result=fjsnNumCreate(&item3,"d",1,"4",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"d",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnNumCreate(&item3,"5.5555",6);
+	result=fjsnNumCreate(&item3,"e",1,"5.5555",6);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"e",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnArrCreate(&item2);
+	result=fjsnArrCreate(&item2,"f",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item1,item2,"f",1);
+	fjsnObjInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"7",1);
+	result=fjsnStrCreate(&item3,NULL,0,"7",1);
 	if(result!=0)
 		return -1;
 	fjsnArrInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"8",1);
+	result=fjsnStrCreate(&item3,NULL,0,"8",1);
 	if(result!=0)
 		return -1;
 	fjsnArrInsert(item2,item3);
@@ -76,8 +76,8 @@ int main(void)
 
 	printf("========================================\n");
 	
-	//测试对象头节点解包.
-	result=fjsnObjCreate(&item1);
+	//测试对象节点解包.
+	result=fjsnObjCreate(&item1,NULL,0);
 	if(result!=0)
 		return -1;
 
@@ -130,55 +130,55 @@ int main(void)
 
 	printf("========================================\n");
 
-	//测试数组头节点打包.
-	result=fjsnArrCreate(&item1);
+	//测试数组节点打包.
+	result=fjsnArrCreate(&item1,NULL,0);
 	if(result!=0)
 		return -1;
 
-	result=fjsnObjCreate(&item2);
+	result=fjsnObjCreate(&item2,NULL,0);
 	if(result!=0)
 		return -1;
 	fjsnArrInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"1",1);
+	result=fjsnStrCreate(&item3,"a",1,"1",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"a",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"2",1);
+	result=fjsnStrCreate(&item3,"b",1,"2",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"b",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnObjCreate(&item2);
+	result=fjsnObjCreate(&item2,NULL,0);
 	if(result!=0)
 		return -1;
 	fjsnArrInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"3",1);
+	result=fjsnStrCreate(&item3,"a",1,"3",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"a",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"4",1);
+	result=fjsnStrCreate(&item3,"b",1,"4",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"b",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnObjCreate(&item2);
+	result=fjsnObjCreate(&item2,NULL,0);
 	if(result!=0)
 		return -1;
 	fjsnArrInsert(item1,item2);
 
-	result=fjsnStrCreate(&item3,"5",1);
+	result=fjsnStrCreate(&item3,"a",1,"5",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"a",1);
+	fjsnObjInsert(item2,item3);
 
-	result=fjsnStrCreate(&item3,"6",1);
+	result=fjsnStrCreate(&item3,"b",1,"6",1);
 	if(result!=0)
 		return -1;
-	fjsnObjInsert(item2,item3,"b",1);
+	fjsnObjInsert(item2,item3);
 
 	move=pd;
 	result=fjsnExport(item1,&move,&pl);
@@ -190,8 +190,8 @@ int main(void)
 
 	printf("========================================\n");
 	
-	//测试数组头节点解包.
-	result=fjsnObjCreate(&item1);
+	//测试数组节点解包.
+	result=fjsnObjCreate(&item1,NULL,0);
 	if(result!=0)
 		return -1;
 
