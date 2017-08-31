@@ -12,7 +12,7 @@
 ### cat /home/zoe/platform/profile >> ~/.basrc
 ### cd /home/zoe/platform && make
 ### cd /home/zoe/business/$business && mkdir log
-### cd /home/zoe/business/$business && make clean
+### cd /home/zoe/business/$business && make
 
 ## unixodbc初始化.
 ### cp libmyodbc5a.so /usr/local/lib
