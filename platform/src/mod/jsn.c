@@ -69,18 +69,30 @@ void fjsnFree(struct tjsnItem *item)
 /*========================================*\
     功能 : 创建字符类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnStrCreate(struct tjsnItem **item,char *vald,int vall)
+int fjsnStrCreate(struct tjsnItem **item,char *keyd,int keyl,char *vald,int vall)
 {
+	if(vald==NULL||vall==0)
+		return -1;
 	int result;
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
 	(*item)->type=cjsnStr;
+	if(keyd!=NULL&&keyl!=0)
+	{
+		(*item)->keyd=(char*)malloc(keyl);
+		if((*item)->keyd==NULL)
+			return -1;
+		memcpy((*item)->keyd,keyd,keyl);
+		(*item)->keyl=keyl;
+	}
 	(*item)->vald=(char*)malloc(vall);
 	if((*item)->vald==NULL)
 		return -1;
@@ -92,18 +104,30 @@ int fjsnStrCreate(struct tjsnItem **item,char *vald,int vall)
 /*========================================*\
     功能 : 创建数值类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnNumCreate(struct tjsnItem **item,char *vald,int vall)
+int fjsnNumCreate(struct tjsnItem **item,char *keyd,int keyl,char *vald,int vall)
 {
+	if(vald==NULL||vall==0)
+		return -1;
 	int result;
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
 	(*item)->type=cjsnNum;
+	if(keyd!=NULL&&keyl!=0)
+	{
+		(*item)->keyd=(char*)malloc(keyl);
+		if((*item)->keyd==NULL)
+			return -1;
+		memcpy((*item)->keyd,keyd,keyl);
+		(*item)->keyl=keyl;
+	}
 	(*item)->vald=(char*)malloc(vall);
 	if((*item)->vald==NULL)
 		return -1;
@@ -115,32 +139,52 @@ int fjsnNumCreate(struct tjsnItem **item,char *vald,int vall)
 /*========================================*\
     功能 : 创建数组类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnArrCreate(struct tjsnItem **item)
+int fjsnArrCreate(struct tjsnItem **item,char *keyd,int keyl)
 {
 	int result;
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
 	(*item)->type=cjsnArr;
+	if(keyd!=NULL&&keyl!=0)
+	{
+		(*item)->keyd=(char*)malloc(keyl);
+		if((*item)->keyd==NULL)
+			return -1;
+		memcpy((*item)->keyd,keyd,keyl);
+		(*item)->keyl=keyl;
+	}
 	return 0;
 }
 
 /*========================================*\
     功能 : 创建对象类型节点
     参数 : (输出)数据结构节点
+           (输入)键数据
+           (输入)键长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnObjCreate(struct tjsnItem **item)
+int fjsnObjCreate(struct tjsnItem **item,char *keyd,int keyl)
 {
 	int result;
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
 	(*item)->type=cjsnObj;
+	if(keyd!=NULL&&keyl!=0)
+	{
+		(*item)->keyd=(char*)malloc(keyl);
+		if((*item)->keyd==NULL)
+			return -1;
+		memcpy((*item)->keyd,keyd,keyl);
+		(*item)->keyl=keyl;
+	}
 	return 0;
 }
 
@@ -172,17 +216,10 @@ void fjsnArrInsert(struct tjsnItem *arr,struct tjsnItem *item)
     功能 : 插入对象类型节点
     参数 : (输入)对象节点
            (输入)插入节点
-           (输入)键数据
-           (输入)键长度
     返回 : 空
 \*========================================*/
-void fjsnObjInsert(struct tjsnItem *obj,struct tjsnItem *item,char *keyd,int keyl)
+void fjsnObjInsert(struct tjsnItem *obj,struct tjsnItem *item)
 {
-	item->keyd=(char*)malloc(keyl);
-	if(item->keyd==NULL)
-		return -1;
-	memcpy(item->keyd,keyd,keyl);
-	item->keyl=keyl;
 	struct tjsnItem *temp;
 	temp=obj->chld;
 	if(temp==NULL)
@@ -197,6 +234,50 @@ void fjsnObjInsert(struct tjsnItem *obj,struct tjsnItem *item,char *keyd,int key
 		temp=temp->next;
 	}
 	temp->next=item;
+}
+
+/*========================================*\
+    功能 : 查询数组类型节点
+    参数 : (输入)数组节点
+           (输出)查询节点
+           (输入)序
+    返回 : (成功)0
+           (失败)-1
+\*========================================*/
+int fjsnArrSelect(struct tjsnItem *arr,struct tjsnItem **item,int ind)
+{
+	*item=arr->chld;
+	while(1)
+	{
+		if(*item==NULL)
+			return -1;
+		if(ind==0)
+			return 0;
+		*item=(*item)->next;
+		ind--;
+	}
+}
+
+/*========================================*\
+    功能 : 查询对象类型节点
+    参数 : (输入)对象节点
+           (输出)查询节点
+           (输入)键数据
+           (输入)键长度
+    返回 : (成功)0
+           (失败)-1
+\*========================================*/
+int fjsnObjSelect(struct tjsnItem *obj,struct tjsnItem **item,char *keyd,int keyl)
+{
+	*item=obj->chld;
+	while(1)
+	{
+		if(*item==NULL)
+			return -1;
+		if(strncmp((*item)->keyd,keyd,keyl)==0&&(*item)->keyl==keyl)
+			return 0;
+		*item=(*item)->next;
+	}
 }
 
 /*========================================*\
@@ -549,50 +630,6 @@ int fjsnAllImport(struct tjsnItem *item,char **src)
 	}
 
 	return 0;
-}
-
-/*========================================*\
-    功能 : 查询数组类型节点
-    参数 : (输入)数组节点
-           (输出)查询节点
-           (输入)序
-    返回 : (成功)0
-           (失败)-1
-\*========================================*/
-int fjsnArrSelect(struct tjsnItem *arr,struct tjsnItem **item,int ind)
-{
-	*item=arr->chld;
-	while(1)
-	{
-		if(*item==NULL)
-			return -1;
-		if(ind==0)
-			return 0;
-		*item=(*item)->next;
-		ind--;
-	}
-}
-
-/*========================================*\
-    功能 : 查询对象类型节点
-    参数 : (输入)对象节点
-           (输出)查询节点
-           (输入)键数据
-           (输入)键长度
-    返回 : (成功)0
-           (失败)-1
-\*========================================*/
-int fjsnObjSelect(struct tjsnItem *obj,struct tjsnItem **item,char *keyd,int keyl)
-{
-	*item=obj->chld;
-	while(1)
-	{
-		if(*item==NULL)
-			return -1;
-		if(strncmp((*item)->keyd,keyd,keyl)==0&&(*item)->keyl==keyl)
-			return 0;
-		*item=(*item)->next;
-	}
 }
 
 /*========================================*\
