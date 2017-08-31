@@ -11,7 +11,7 @@
 
 #define cjsnSpace "\t\v\n\r\f "
 #define mjsnSkip(data,accept) *data+=strspn(*data,accept)
-#define mjsnSize(data,reject) strcspn(*data,reject)
+#define mjsnSize(data,reject) strcspn(data,reject)
 
 /*========================================*\
     功能 : 导出节点
@@ -47,115 +47,189 @@ int fjsnInit(struct tjsnItem **item)
 
 /*========================================*\
     功能 : 节点释放
-    参数 : (输入)节点
+    参数 : (出入)节点
     返回 : 空
 \*========================================*/
-void fjsnFree(struct tjsnItem *item)
+void fjsnFree(struct tjsnItem **item)
 {
-	if(item->chld)
-		fjsnFree(item->chld);
-	if(item->next)
-		fjsnFree(item->next);
-	if(item->keydata)
-		free(item->keydata);
-	if(item->valdata)
-		free(item->valdata);
-	free(item);
+	if((*item)->chld)
+		fjsnFree(&(*item)->chld);
+	if((*item)->next)
+		fjsnFree(&(*item)->next);
+	if((*item)->keydata)
+		free((*item)->keydata);
+	if((*item)->valdata)
+		free((*item)->valdata);
+	free((*item));
+	*item=NULL;
 }
 
 /*========================================*\
     功能 : 创建节点
     参数 : (输出)节点
-           (输入)类型
-           (输入)键数据
-           (输入)键长度
+           (输入)路径
            (输入)值数据
            (输入)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnCreate(struct tjsnItem **item,int type,char *keydata,int keysize,char *valdata,int valsize)
+int fjsnCreate(struct tjsnItem **item,char *path,char *data,int size)
 {
 	int result;
-	result=fjsnInit(item);
-	if(result!=0)
+	if(*path!='/'&&*path!=':')
 		return -1;
-	(*item)->type=type;
-	if(keydata!=NULL&&keysize!=0)
+	if(data==NULL||size==0)
+		return -1;
+	if(*item==NULL)
 	{
-		(*item)->keydata=(char*)malloc(keysize);
-		if((*item)->keydata==NULL)
+		result=fjsnInit(item);
+		if(result!=0)
 			return -1;
-		memcpy((*item)->keydata,keydata,keysize);
-		(*item)->keysize=keysize;
+		if(*path=='/')
+			(*item)->type=cjsnObj;
+		else
+		if(*path==':')
+			(*item)->type=cjsnArr;
 	}
-	if(valdata!=NULL&&valsize!=0)
+	else
 	{
-		(*item)->valdata=(char*)malloc(valsize);
-		if((*item)->valdata==NULL)
+		if(*path=='/'&&(*item)->type!=cjsnObj)
 			return -1;
-		memcpy((*item)->valdata,valdata,valsize);
-		(*item)->valsize=valsize;
+		if(*path==':'&&(*item)->type!=cjsnArr)
+			return -1;
 	}
+	struct tjsnItem **temp;
+	temp=item;
+	path++;
+	while(1)
+	{
+		item=&(*item)->chld;
+		int index;
+		if(*(path-1)==':')
+			index=atoi(path);
+		else
+			index=0;
+		while(1)
+		{
+			if(*item==NULL)
+			{
+				if(index!=0)
+					return -1;
+				result=fjsnInit(item);
+				if(result!=0)
+					return -1;
+				if(*(path+mjsnSize(path,"/:"))=='/')
+					(*item)->type=cjsnObj;
+				else
+				if(*(path+mjsnSize(path,"/:"))==':')
+					(*item)->type=cjsnArr;
+				else
+				if(*(path+mjsnSize(path,"/:"))=='\0')
+					(*item)->type=cjsnStr;
+				else
+					return -1;
+				if(*(path-1)=='/')
+				{
+					(*item)->keysize=mjsnSize(path,"/:");
+					(*item)->keydata=(char*)malloc((*item)->keysize);
+					if((*item)->keydata==NULL)
+						return -1;
+					memcpy((*item)->keydata,path,(*item)->keysize);
+				}
+				break;
+			}
+			if(*(path-1)=='/')
+			{
+				if((*item)->keysize!=mjsnSize(path,"/:"))
+					goto next;
+				if(memcmp((*item)->keydata,path,(*item)->keysize)!=0)
+					goto next;
+			}
+			else
+			if(*(path-1)==':')
+			{
+				if(index--!=0)
+					goto next;
+			}
+			break;
+			next:
+			item=&((*item)->next);
+		}
+		if(*(path+mjsnSize(path,"/:"))=='\0')
+			break;
+		path+=mjsnSize(path,"/:")+1;
+	}
+	if((*item)->chld!=NULL)
+		return -1;
+	if((*item)->valdata!=NULL||(*item)->valsize!=0)
+		return -1;
+	(*item)->valsize=size;
+	(*item)->valdata=(char*)malloc((*item)->valsize);
+	if((*item)->valdata==NULL)
+		return -1;
+	memcpy((*item)->valdata,data,(*item)->valsize);
+	item=temp;
 	return 0;
 }
 
 /*========================================*\
-    功能 : 插入节点
-    参数 : (输入)目标节点
-           (输入)插入节点
-    返回 : 空
-\*========================================*/
-void fjsnInsert(struct tjsnItem *target,struct tjsnItem *insert)
-{
-	struct tjsnItem *temp;
-	temp=target->chld;
-	if(temp==NULL)
-	{
-		target->chld=insert;
-		return;
-	}
-	while(1)
-	{
-		if(temp->next==NULL)
-			break;
-		temp=temp->next;
-	}
-	temp->next=insert;
-}
-
-/*========================================*\
     功能 : 查询节点
-    参数 : (输入)目标节点
-           (输出)查询节点
-           (输入)键数据
-           (输入)键长度
-           (输入)序号
+    参数 : (输入)节点
+           (输入)路径
+           (输出)值数据
+           (输出)值长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnSelect(struct tjsnItem *target,struct tjsnItem **select,char *keydata,int keysize,int index)
+int fjsnSelect(struct tjsnItem *item,char *path,char *data,int *size)
 {
-	*select=target->chld;
+	int result;
+	if(*path!='/'&&*path!=':')
+		return -1;
+	if(item==NULL)
+		return -1;
+	if(*path=='/'&&item->type!=cjsnObj)
+		return -1;
+	if(*path==':'&&item->type!=cjsnArr)
+		return -1;
+	path++;
 	while(1)
 	{
-		if(*select==NULL)
-			return -1;
-		if(target->type==cjsnArr)
-		{
-			if(index==0)
-				return 0;
-			else
-				index--;
-		}
+		item=item->chld;
+		int index;
+		if(*(path-1)==':')
+			index=atoi(path);
 		else
-		if(target->type==cjsnObj)
+			index=0;
+		while(1)
 		{
-			if(strncmp((*select)->keydata,keydata,keysize)==0&&(*select)->keysize==keysize)
-				return 0;
+			if(item==NULL)
+				return -1;
+			if(*(path-1)=='/')
+			{
+				if(item->keysize!=mjsnSize(path,"/:"))
+					goto next;
+				if(memcmp(item->keydata,path,item->keysize)!=0)
+					goto next;
+			}
+			else
+			if(*(path-1)==':')
+			{
+				if(index--!=0)
+					goto next;
+			}
+			break;
+			next:
+			item=item->next;
 		}
-		*select=(*select)->next;
+		if(*(path+mjsnSize(path,"/:"))=='\0')
+			break;
+		path+=mjsnSize(path,"/:")+1;
 	}
+	*size=item->valsize;
+	memcpy(data,item->valdata,*size);
+	data[*size]='\0';
+	return 0;
 }
 
 /*========================================*\
@@ -293,7 +367,7 @@ int fjsnStrImport(struct tjsnItem **item,char **data)
 	if(result!=0)
 		return -1;
 	(*data)++;
-	(*item)->valsize=mjsnSize(data,"\"");
+	(*item)->valsize=mjsnSize(*data,"\"");
 	(*item)->valdata=(char*)malloc((*item)->valsize);
 	if((*item)->valdata==NULL)
 		return -1;
@@ -318,7 +392,7 @@ int fjsnNumImport(struct tjsnItem **item,char **data)
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
-	(*item)->valsize=mjsnSize(data,",]}");
+	(*item)->valsize=mjsnSize(*data,",]}");
 	(*item)->valdata=(char*)malloc((*item)->valsize);
 	if((*item)->valdata==NULL)
 		return -1;
@@ -348,11 +422,20 @@ int fjsnArrImport(struct tjsnItem **item,char **data)
 		mjsnSkip(data,cjsnSpace);
 		if(**data==']')
 			break;
-		struct tjsnItem *temp;
-		result=fjsnAllImport(&temp,data);
+		struct tjsnItem **temp;
+		temp=&(*item)->chld;
+		if(*temp!=NULL)
+		{
+			while(1)
+			{
+				temp=&(*temp)->next;
+				if(*temp==NULL)
+					break;
+			}
+		}
+		result=fjsnAllImport(temp,data);
 		if(result!=0)
 			return -1;
-		fjsnInsert((*item),temp);
 		mjsnSkip(data,cjsnSpace);
 		if(**data!=','&&**data!=']')
 			return -1;
@@ -388,7 +471,7 @@ int fjsnObjImport(struct tjsnItem **item,char **data)
 			return -1;
 		int keysize;
 		char *keydata;
-		keysize=mjsnSize(data,"\"");
+		keysize=mjsnSize(*data,"\"");
 		keydata=(char*)malloc(keysize);
 		if(keydata==NULL)
 			return -1;
@@ -399,13 +482,22 @@ int fjsnObjImport(struct tjsnItem **item,char **data)
 		if(*(*data)++!=':')
 			return -1;
 		mjsnSkip(data,cjsnSpace);
-		struct tjsnItem *temp;
-		result=fjsnAllImport(&temp,data);
+		struct tjsnItem **temp;
+		temp=&(*item)->chld;
+		if(*temp!=NULL)
+		{
+			while(1)
+			{
+				temp=&(*temp)->next;
+				if(*temp==NULL)
+					break;
+			}
+		}
+		result=fjsnAllImport(temp,data);
 		if(result!=0)
 			return -1;
-		fjsnInsert((*item),temp);
-		temp->keysize=keysize;
-		temp->keydata=keydata;
+		(*temp)->keysize=keysize;
+		(*temp)->keydata=keydata;
 		mjsnSkip(data,cjsnSpace);
 		if(**data!=','&&**data!='}')
 			return -1;

@@ -496,6 +496,7 @@ int fpkgFixDec(struct tpkgNode *node,char **middle,int count,int index,char **da
 \*========================================*/
 int fpkgJsnEnc(struct tpkgNode *node,char **middle,int count,int index,char **data,int *size)
 {
+	/*
 	int result;
 
 	struct tjsnItem *head;
@@ -615,6 +616,7 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int count,int index,char **da
 	fjsnFree(head);
 
 	return 0;
+	*/
 }
 
 /*========================================*\
@@ -630,6 +632,7 @@ int fpkgJsnEnc(struct tpkgNode *node,char **middle,int count,int index,char **da
 \*========================================*/
 int fpkgJsnDec(struct tpkgNode *node,char **middle,int count,int index,char **data,int size)
 {
+	/*
 	int result;
 
 	struct tjsnItem *head;
@@ -741,6 +744,7 @@ int fpkgJsnDec(struct tpkgNode *node,char **middle,int count,int index,char **da
 	fjsnFree(head);
 
 	return 0;
+	*/
 }
 
 /*========================================*\
