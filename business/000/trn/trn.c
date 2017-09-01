@@ -214,58 +214,57 @@ void ftrnError(int error)
 
 /*========================================*\
     功能 : 批量扣款生产者
-    参数 : 空
-    返回 : (成功)0
-           (失败)<0
+    参数 : (输出)错误标识
+    返回 : 空
 \*========================================*/
-int ftrnP01(void)
+void ftrnP01(int *error)
 {
 	int result;
 
-	int error;
-	error=-1;
-	//raise(SIGSEGV);
+	*error=-1;
+
+	raise(SIGSEGV);
 
 	char *bsncode;
 	result=fmmpRefGet("pBsnCode",0,&bsncode,0);
 	if(result==-1)
-		return error;
+		return;
 
-	error=-2;
+	*error=-2;
 	char *clilnkcode;
 	result=fmmpRefGet("pCliLnkCode",0,&clilnkcode,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("CliLnkCode[%s]",clilnkcode);
 	char *clitrncode;
 	result=fmmpRefGet("pCliTrnCode",0,&clitrncode,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("CliTrnCode[%s]",clitrncode);
 
 	char *host;
 	result=fmmpRefGet("pCliHost",0,&host,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("Host[%s]",host);
 	char *port;
 	result=fmmpRefGet("pCliPort",0,&port,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("Port[%s]",port);
 
 	char *a;
 	result=fmmpRefGet("pa",0,&a,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("a[%s]",a);
 	char *b;
 	result=fmmpRefGet("pb",0,&b,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("b[%s]",b);
 
-	error=-3;
+	*error=-3;
 	char path[64];
 	sprintf(path,"%s/%s/emu/1.txt",getenv("BUSINESS"),bsncode);
 	FILE *fp;
@@ -273,7 +272,7 @@ int ftrnP01(void)
 	if(fp==NULL)
 	{
 		mlogError("fopen",errno,strerror(errno),"[%s]",path);
-		return error;
+		return;
 	}
 
 	int product(void *fp)
@@ -318,77 +317,72 @@ int ftrnP01(void)
 
 	result=fzoeBtcTrn("C01",product,fp);
 	if(result==-1)
-		return error;
+		return;
 
 	fclose(fp);
-
-	return error;
 }
 
 /*========================================*\
     功能 : 批量扣款消费者
-    参数 : 空
-    返回 : (成功)0
-           (失败)<0
+    参数 : (输出)错误标识
+    返回 : 空
 \*========================================*/
-int ftrnC01(void)
+void ftrnC01(int *error)
 {
 	int result;
 
-	int error;
-	error=-1;
+	*error=-1;
 
 	char *date;
 	result=fmmpRefGet("pTrnDate",0,&date,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("Date[%s]",date);
 	char *time;
 	result=fmmpRefGet("pTrnTime",0,&time,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("Time[%s]",time);
 
 	result=fmmpValSet("pekey",0,"65537",0);
 	if(result==-1)
-		return error;
+		return;
 	result=fmmpValSet("pnkey",0,"18963013433694059164783079915225901655884622091074455623574499651862890701825200425011382648260744403439001417193688265729378093626577075796360717783650574621923665542765757623427651370039267279780525967220566585222487722958100608921326562811541155532567087759322522936341472337052905491942526925060052097265465966812987107117709023325072545173483672712257692750081212398036439582803854982962650736975340774012499668990310100509762249890359881837746510073123517825535020610978031951578715699448412921461825061840155906764672123146449509537860959027200694776575503258977635017886329962721585174129885157203241757058779",0);
 	if(result==-1)
-		return error;
+		return;
 	result=fmmpValSet("pdkey",0,"9210676795215925940506239092442872186107805250684767515104982836686535365760573302549320813445231643536811459371318212900047731287181512203604872802356789548688299485635457520908200134836427906123466024559389136275612866641191046790181543413619540618130854648498317154753649360960016693963112262416255067918796430747448027433165632779289821088003692693886039972523188537376214437274956683317270579204452466431807523390867599288181809554521377439432147976827371047011202662824985525008447220263052744127327523618242946751794792592767875584842955021309994048910678140937773334205520913732139185573579782780497533715773",0);
 	if(result==-1)
-		return error;
+		return;
 
 	result=fzoeSrvTrn("002","A01");
 	if(result==-1)
-		return error;
+		return;
 
 	char *srvlnkcode;
 	result=fmmpRefGet("pSrvLnkCode",0,&srvlnkcode,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("SrvLnkCode[%s]",srvlnkcode);
 	char *srvtrncode;
 	result=fmmpRefGet("pSrvTrnCode",0,&srvtrncode,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("SrvTrnCode[%s]",srvtrncode);
 
 	char *a;
 	result=fmmpRefGet("pa",0,&a,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("a[%s]",a);
 	char *b;
 	result=fmmpRefGet("pb",0,&b,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("b[%s]",b);
 
 	result=fmmpValSet("pCliRetCode",0,"0001",0);
 	if(result==-1)
-		return -1;
+		return;
 
-	error=0;
-	return error;
+	*error=0;
 }

@@ -1954,13 +1954,17 @@ void *fzoeEmployBoot(void *argument)
 	void sighand(int id,siginfo_t *siginfo,void *nothing)
 	{
 		if(id==SIGALRM)
+		{
 			if(siginfo->si_value.sival_int==0)
 				flogAnyhow("### 客户端交易超时 ###");
 			else
 			if(siginfo->si_value.sival_int==1)
 				flogAnyhow("### 服务端交易超时 ###");
+		}
 		else
+		{
 			flogAnyhow("### 发生异常信号[%d] ###",id);
+		}
 		int index;
 		memcpy(&index,pthread_getspecific(vzoeIndex),sizeof(index));
 		siglongjmp(vzoeJump[index*2+0],1);
@@ -2286,7 +2290,7 @@ void *fzoeEmployBoot(void *argument)
 				goto tag11timersettime;
 			}
 			if(dlhand!=NULL)
-				error=((int(*)(void))dlhand)();
+				((void(*)(int*))dlhand)(&error);
 
 			tag10ftrnerror:;
 			if(error!=0)
@@ -2624,7 +2628,7 @@ void *fzoeEmployBoot(void *argument)
 				goto tag21timersettime;
 			}
 			if(dlhand!=NULL)
-				error=((int(*)(void))dlhand)();
+				((void(*)(int*))dlhand)(&error);
 
 			tag20ftrnerror:;
 			if(error!=0)

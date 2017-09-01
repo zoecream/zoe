@@ -215,32 +215,29 @@ void ftrnError(int error)
 
 /*========================================*\
     功能 : 签到
-    参数 : 空
-    返回 : (成功)0
-           (失败)<0
+    参数 : (输出)错误标识
+    返回 : 空
 \*========================================*/
-int ftrnM01(void)
+void ftrnM01(int *error)
 {
 	int result;
 
-	int error;
-	error=-1;
+	*error=-1;
 
 	result=fzoeSrvTrn("002","5110");
 	if(result==-1)
-		return error;
+		return;
 
 	char *srvretcode1;
 	result=fmmpRefGet("pSrvRetCode1",0,&srvretcode1,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("SrvRetCode1[%s]",srvretcode1);
 	char *srvretcode2;
 	result=fmmpRefGet("pSrvRetCode2",0,&srvretcode2,0);
 	if(result==-1)
-		return error;
+		return;
 	flogDepend("SrvRetCode2[%s]",srvretcode2);
 
-	error=0;
-	return error;
+	*error=0;
 }
