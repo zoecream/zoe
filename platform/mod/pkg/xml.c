@@ -387,7 +387,7 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		}
 		if(**data!='<')
 		{
-			(*item)->valsize=mxmlSize(*data,"<");
+			(*item)->valsize=mxmlSize(*data,cxmlSpace"<");
 			(*item)->valdata=(char*)malloc((*item)->valsize+1);
 			if((*item)->valdata==NULL)
 				return -1;
