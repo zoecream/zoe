@@ -19,36 +19,30 @@
 
 #include <log.h>
 #include <pkg.h>
+#include <xml.h>
 
 /*========================================*\
     功能 : 模拟服务端
-    参数 : 空`
+    参数 : 空
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int femuServer();
+int femuServer(void);
 /*========================================*\
     功能 : 模拟客户端
-    参数 : 空`
+    参数 : 空
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int femuClient();
+int femuClient(void);
 
 /*========================================*\
-    功能 : 读取渠道配置文件
+    功能 : 读取配置文件
     参数 : 空
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int femuLnkFile(void);
-/*========================================*\
-    功能 : 读取模拟配置文件
-    参数 : 空
-    返回 : (成功)0
-           (失败)-1
-\*========================================*/
-int femuEmuFile(void);
+int femuFile(void);
 /*========================================*\
     功能 : 调用定制接口
     参数 : 空
@@ -72,32 +66,40 @@ int femuExam(void);
 void femuHelp(void);
 
 //地址.
-char vemuHost[15+1];
+char vemuLnkHost[15+1];
 //端口.
-char vemuPort[5+1];
+char vemuLnkPort[5+1];
 //业务代码.
 char vemuBsnCode[3+1];
 //渠道代码.
 char vemuLnkCode[3+1];
 //交易代码.
 char vemuTrnCode[15+1];
-//行号.
-char vemuLine;
-//标记.
-char vemuMark;
 //报文处理函数.
-char vemuHandName[64];
+char vemuPkgHandName[64];
 //报文处理参数.
-char vemuHandArgs[64];
+char vemuPkgHandArgs[64];
 
-//正式报文数据.
-char _vemuFmlData[1024*8];
-char *vemuFmlData=_vemuFmlData;
-//临时报文数据.
-char _vemuTmpData[1024*8];
-char *vemuTmpData=_vemuTmpData;
-//报文长度.
-int vemuSize;
+//发送正式报文数据.
+char _vemuSndFmlData[1024*8];
+char *vemuSndFmlData=_vemuSndFmlData;
+//发送临时报文数据.
+char _vemuSndTmpData[1024*8];
+char *vemuSndTmpData=_vemuSndTmpData;
+//发送报文长度.
+int vemuSndSize;
+//接收正式报文数据.
+char _vemuRcvFmlData[1024*8];
+char *vemuRcvFmlData=_vemuRcvFmlData;
+//接收临时报文数据.
+char _vemuRcvTmpData[1024*8];
+char *vemuRcvTmpData=_vemuRcvTmpData;
+//接收报文长度.
+int vemuRcvSize;
+//发送报文是否可读.
+char vemuSndVisual;
+//接收报文是否可读.
+char vemuRcvVisual;
 
 int femuSetBlock(int id)
 {
@@ -198,11 +200,11 @@ int main(int argc,char *argv[])
 
 /*========================================*\
     功能 : 模拟服务端
-    参数 : 空`
+    参数 : 空
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int femuServer()
+int femuServer(void)
 {
 	int result;
 
@@ -219,11 +221,11 @@ int femuServer()
 	if(result==-1)
 		return -1;
 
-	result=femuLnkFile();
+	result=femuFile();
 	if(result==-1)
 		return -1;
 
-	result=femuEmuFile();
+	result=femuHand();
 	if(result==-1)
 		return -1;
 
@@ -238,8 +240,8 @@ int femuServer()
 	struct sockaddr_in lisaddress;
 	bzero(&lisaddress,sizeof(lisaddress));
 	lisaddress.sin_family=AF_INET;
-	inet_pton(AF_INET,vemuHost,&lisaddress.sin_addr);
-	lisaddress.sin_port=htons(atoi(vemuPort));
+	inet_pton(AF_INET,vemuLnkHost,&lisaddress.sin_addr);
+	lisaddress.sin_port=htons(atoi(vemuLnkPort));
 
 	int option;
 	option=1;
@@ -254,7 +256,7 @@ int femuServer()
 	if(result==-1)
 	{
 		close(lisid);
-		mlogError("bind",errno,strerror(errno),"[%s][%s]",vemuHost,vemuPort);
+		mlogError("bind",errno,strerror(errno),"[%s][%s]",vemuLnkHost,vemuLnkPort);
 		return -1;
 	}
 	result=listen(lisid,1024);
@@ -285,54 +287,36 @@ int femuServer()
 		setsockopt(conid,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 		*/
 
-		vemuSize=read(conid,vemuFmlData,sizeof(_vemuFmlData));
-		if(vemuSize==-1)
+		vemuRcvSize=read(conid,vemuRcvFmlData,sizeof(_vemuRcvFmlData));
+		if(vemuRcvSize==-1)
 		{
 			mlogError("read",errno,strerror(errno),"[]");
 			return -1;
 		}
-		vemuFmlData[vemuSize]='\0';
+		vemuRcvFmlData[vemuRcvSize]='\0';
 
-		if(vemuMark=='-')
+		if(vemuRcvVisual==1)
 		{
-			printf("\033[0;31m[%s]服务端接收报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize,vemuFmlData);
+			fpkgHexEnc(&vemuRcvFmlData,&vemuRcvTmpData,&vemuRcvSize,"upper");
+			vemuRcvSize/=2;
 		}
-		else
-		if(vemuMark=='+')
-		{
-			fpkgHexEnc(&vemuFmlData,&vemuTmpData,&vemuSize,"upper");
-			printf("\033[0;31m[%s]服务端接收报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize/=2,vemuFmlData);
-			mpkgSwap(vemuFmlData,vemuTmpData);
-		}
+		printf("\033[0;31m[%s]服务端接收报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuRcvSize,vemuRcvFmlData);
 
-		result=femuEmuFile();
-		if(result==-1)
-			return -1;
-
-		result=femuHand();
-		if(result==-1)
-			return -1;
-
-		if(vemuMark=='-')
+		if(vemuSndVisual==1)
 		{
-			printf("\033[0;33m[%s]服务端发送报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize,vemuFmlData);
+			fpkgHexEnc(&vemuSndFmlData,&vemuSndTmpData,&vemuSndSize,"upper");
+			vemuSndSize/=2;
 		}
-		else
-		if(vemuMark=='+')
-		{
-			fpkgHexEnc(&vemuFmlData,&vemuTmpData,&vemuSize,"upper");
-			printf("\033[0;33m[%s]服务端发送报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize/=2,vemuFmlData);
-			mpkgSwap(vemuFmlData,vemuTmpData);
-		}
+		printf("\033[0;33m[%s]服务端发送报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSndSize,vemuSndFmlData);
 
 		int remain;
-		remain=vemuSize;
+		remain=vemuSndSize;
 		int record;
 		record=0;
 		while(remain>0)
 		{
 			int result;
-			result=write(conid,vemuFmlData+record,remain);
+			result=write(conid,vemuSndFmlData+record,remain);
 			if(result==-1&&errno!=EAGAIN)
 			{
 				mlogError("write",errno,strerror(errno),"[]");
@@ -352,11 +336,11 @@ int femuServer()
 
 /*========================================*\
     功能 : 模拟客户端
-    参数 : 空`
+    参数 : 空
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int femuClient()
+int femuClient(void)
 {
 	int result;
 
@@ -364,11 +348,11 @@ int femuClient()
 	if(result==-1)
 		return -1;
 
-	result=femuLnkFile();
+	result=femuFile();
 	if(result==-1)
 		return -1;
 
-	result=femuEmuFile();
+	result=femuHand();
 	if(result==-1)
 		return -1;
 
@@ -390,13 +374,13 @@ int femuClient()
 	struct sockaddr_in conaddress;
 	bzero(&conaddress,sizeof(conaddress));
 	conaddress.sin_family=AF_INET;
-	inet_pton(AF_INET,vemuHost,&conaddress.sin_addr);
-	conaddress.sin_port=htons(atoi(vemuPort));
+	inet_pton(AF_INET,vemuLnkHost,&conaddress.sin_addr);
+	conaddress.sin_port=htons(atoi(vemuLnkPort));
 
 	result=connect(conid,(struct sockaddr*)&conaddress,sizeof(struct sockaddr_in));
 	if(result==-1&&errno!=EINPROGRESS)
 	{
-		mlogError("connect",errno,strerror(errno),"[%s][%s]",vemuHost,vemuPort);
+		mlogError("connect",errno,strerror(errno),"[%s][%s]",vemuLnkHost,vemuLnkPort);
 		return -1;
 	}
 	if(result==-1&&errno==EINPROGRESS)
@@ -443,25 +427,12 @@ int femuClient()
 	setsockopt(conid,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 	*/
 
-	result=femuEmuFile();
-	if(result==-1)
-		return -1;
-
-	result=femuHand();
-	if(result==-1)
-		return -1;
-
-	if(vemuMark=='-')
+	if(vemuSndVisual==1)
 	{
-		printf("\033[0;32m[%s]客户端发送报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize,vemuFmlData);
+		fpkgHexEnc(&vemuSndFmlData,&vemuSndTmpData,&vemuSndSize,"upper");
+		vemuSndSize/=2;
 	}
-	else
-	if(vemuMark=='+')
-	{
-		fpkgHexEnc(&vemuFmlData,&vemuTmpData,&vemuSize,"upper");
-		printf("\033[0;32m[%s]客户端发送报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize=vemuSize/2,vemuFmlData);
-		mpkgSwap(vemuFmlData,vemuTmpData);
-	}
+	printf("\033[0;32m[%s]客户端发送报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSndSize,vemuSndFmlData);
 
 	FD_ZERO(&set);
 	FD_SET(conid,&set);
@@ -476,13 +447,13 @@ int femuClient()
 	if(result==0)
 		return -1;
 	int remain;
-	remain=vemuSize;
+	remain=vemuSndSize;
 	int record;
 	record=0;
 	while(remain>0)
 	{
 		int result;
-		result=write(conid,vemuFmlData+record,remain);
+		result=write(conid,vemuSndFmlData+record,remain);
 		if(result==-1&&errno!=EAGAIN)
 		{
 			mlogError("write",errno,strerror(errno),"[]");
@@ -504,24 +475,19 @@ int femuClient()
 	}
 	if(result==0)
 		return -1;
-	vemuSize=read(conid,vemuFmlData,sizeof(_vemuFmlData));
-	if(vemuSize==-1)
+	vemuRcvSize=read(conid,vemuRcvFmlData,sizeof(_vemuRcvFmlData));
+	if(vemuRcvSize==-1)
 	{
 		mlogError("read",errno,strerror(errno),"[]");
 		return -1;
 	}
 
-	if(vemuMark=='-')
+	if(vemuRcvVisual==1)
 	{
-		printf("\033[0;34m[%s]客户端接收报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize,vemuFmlData);
+		fpkgHexEnc(&vemuRcvFmlData,&vemuRcvTmpData,&vemuRcvSize,"upper");
+		vemuRcvSize/=2;
 	}
-	else
-	if(vemuMark=='+')
-	{
-		fpkgHexEnc(&vemuFmlData,&vemuTmpData,&vemuSize,"upper");
-		printf("\033[0;34m[%s]客户端接收报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuSize/=2,vemuFmlData);
-		mpkgSwap(vemuFmlData,vemuTmpData);
-	}
+	printf("\033[0;34m[%s]客户端接收报文[%4d][%s]\033[0;37m\n",flogTime(3),vemuRcvSize,vemuRcvFmlData);
 
 	close(conid);
 
@@ -529,245 +495,178 @@ int femuClient()
 }
 
 /*========================================*\
-    功能 : 读取渠道配置文件
+    功能 : 读取配置文件
     参数 : 空
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int femuLnkFile(void)
+int femuFile(void)
 {
 	int result;
 
-	if(strcmp(vemuBsnCode,"000")==0)
-	{
-		if(strcmp(vemuLnkCode,"001")==0)
-		{
-			strcpy(vemuHost,"127.0.0.1");
-			strcpy(vemuPort,"10001");
-		}
-		else
-		if(strcmp(vemuLnkCode,"002")==0)
-		{
-			strcpy(vemuHost,"0.0.0.0");
-			strcpy(vemuPort,"10002");
-		}
-	}
-	else
-	if(strcmp(vemuBsnCode,"001")==0)
-	{
-		if(strcmp(vemuLnkCode,"001")==0)
-		{
-			strcpy(vemuHost,"127.0.0.1");
-			strcpy(vemuPort,"10011");
-		}
-		else
-		if(strcmp(vemuLnkCode,"002")==0)
-		{
-			strcpy(vemuHost,"0.0.0.0");
-			strcpy(vemuPort,"10012");
-		}
-	}
-	return 0;
+	strcpy(vemuPkgHandName,"null");
+	strcpy(vemuPkgHandArgs,"null");
+	vemuSndVisual=0;
+	vemuRcvVisual=0;
 
-	char lnkpath[64];
-	sprintf(lnkpath,"%s/%s/ini/lnk.ini",getenv("BUSINESS"),vemuBsnCode);
-	FILE *lnkfp;
-	lnkfp=fopen(lnkpath,"r");
-	if(lnkfp==NULL)
+	char xmlpath[64];
+	sprintf(xmlpath,"%s/%s/emu/emu.xml",getenv("BUSINESS"),vemuBsnCode);
+	FILE *xmlfp;
+	xmlfp=fopen(xmlpath,"r");
+	if(xmlfp==NULL)
 	{
-		mlogError("fopen",errno,strerror(errno),"[%s]",lnkpath);
+		mlogError("fopen",errno,strerror(errno),"[%s]",xmlpath);
 		return -1;
 	}
-
+	char xmldata[16384];
+	int xmlsize;
+	xmlsize=0;
 	while(1)
 	{
-		char lnkline[128];
-		fgets(lnkline,sizeof(lnkline),lnkfp);
-		if(ferror(lnkfp))
+		fgets(xmldata+xmlsize,sizeof(xmldata)-xmlsize,xmlfp);
+		if(ferror(xmlfp))
 		{
-			mlogError("fgets",errno,strerror(errno),"[]");
+			mlogError("fgets",errno,strerror(errno),"");
 			return -1;
 		}
-		if(feof(lnkfp))
+		if(feof(xmlfp))
 		{
-			fclose(lnkfp);
-			return -1;
-		}
-		if(lnkline[0]=='#')
-			continue;
-		if(lnkline[0]=='\n')
-			continue;
-
-		if(lnkline[0]=='[')
-		{
-			if(strncmp(lnkline+1,vemuLnkCode,3)!=0)
-				continue;
-
-			while(1)
-			{
-				fgets(lnkline,sizeof(lnkline),lnkfp);
-				if(ferror(lnkfp))
-				{
-					mlogError("fgets",errno,strerror(errno),"[]");
-					return -1;
-				}
-				if(feof(lnkfp))
-				{
-					fclose(lnkfp);
-					return -1;
-				}
-				if(lnkline[0]=='#')
-					continue;
-				if(lnkline[0]=='\n')
-					continue;
-
-				if(lnkline[0]=='[')
-				{
-					fclose(lnkfp);
-					return -1;
-				}
-
-				if(strncmp(lnkline,"LnkHost",7)==0)
-				{
-					lnkline[strlen(lnkline)-1]='\0';
-					strcpy(vemuHost,strchr(lnkline,'=')+1);
-				}
-				if(strncmp(lnkline,"LnkPort",7)==0)
-				{
-					lnkline[strlen(lnkline)-1]='\0';
-					strcpy(vemuPort,strchr(lnkline,'=')+1);
-				}
-
-				if(vemuHost[0]!='\0'&&vemuPort[0]!='\0')
-				{
-					fclose(lnkfp);
-					break;
-				}
-			}
+			fclose(xmlfp);
 			break;
 		}
+		xmlsize+=strlen(xmldata+xmlsize);
 	}
-
-	return 0;
-}
-
-/*========================================*\
-    功能 : 读取模拟配置文件
-    参数 : 空
-    返回 : (成功)0
-           (失败)-1
-\*========================================*/
-int femuEmuFile(void)
-{
-	int result;
-
-	char emupath[64];
-	sprintf(emupath,"%s/%s/emu/emu.ini",getenv("BUSINESS"),vemuBsnCode);
-	FILE *emufp;
-	emufp=fopen(emupath,"r");
-	if(emufp==NULL)
-	{
-		mlogError("fopen",errno,strerror(errno),"[%s]",emupath);
+	struct txmlItem *item;
+	result=fxmlImport(&item,xmldata,xmlsize);
+	if(result==-1)
 		return -1;
-	}
-
+	struct txmlItem *temp1;
+	struct txmlItem *temp2;
+	struct txmlItem *temp3;
+	temp1=item->chld;
+	if(temp1==NULL)
+		return -1;
 	while(1)
 	{
-		char emuline[1024*8];
-		fgets(emuline,sizeof(emuline),emufp);
-		if(ferror(emufp))
+		if(strcmp(temp1->keydata,"lnks")==0)
 		{
-			mlogError("fgets",errno,strerror(errno),"[]");
-			return -1;
-		}
-		if(feof(emufp))
-		{
-			fclose(emufp);
-			return -1;
-		}
-		if(emuline[0]=='#')
-			continue;
-		if(emuline[0]=='\n')
-			continue;
-
-		if(emuline[0]=='[')
-		{
-			char *position1=emuline+1;
-			char *position2=position1;
-
-			if(*position2!='-'&&*position2!='+')
-				return -1;
-			vemuMark=*position2;
-
-			position1=position2+1;
-			position2=strchr(position1,'_');
-			if(position2==NULL)
-				return -1;
-			*position2='\0';
-			if(strcmp(position1,vemuLnkCode)!=0)
-				continue;
-
-			position1=position2+1;
-			position2=strchr(position1,'_');
-			if(position2==NULL)
-				return -1;
-			*position2='\0';
-			if(strcmp(position1,vemuTrnCode)!=0)
-				continue;
-
-			position1=position2+1;
-			position2=strchr(position1,'_');
-			if(position2==NULL)
-				return -1;
-			*position2='\0';
-			strcpy(vemuHandName,position1);
-
-			position1=position2+1;
-			position2=strchr(position1,']');
-			if(position2==NULL)
-				return -1;
-			*position2='\0';
-			strcpy(vemuHandArgs,position1);
-
-			int line=0;
-
-			while(1)
+			temp2=temp1->chld;
+			if(temp2!=NULL)
 			{
-				fgets(emuline,sizeof(emuline),emufp);
-				if(ferror(emufp))
+				while(1)
 				{
-					mlogError("fgets",errno,strerror(errno),"[]");
-					return -1;
+					if(strcmp(temp2->keydata,vemuLnkCode)==0)
+					{
+						temp3=temp2->chld;
+						if(temp3!=NULL)
+						{
+							while(1)
+							{
+								if(strcmp(temp3->keydata,"LnkHost")==0)
+									strcpy(vemuLnkHost,temp3->valdata);
+								else
+								if(strcmp(temp3->keydata,"LnkPort")==0)
+									strcpy(vemuLnkPort,temp3->valdata);
+								temp3=temp3->next;
+								if(temp3==NULL)
+									break;
+							}
+						}
+					}
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
 				}
-				if(feof(emufp))
-				{
-					fclose(emufp);
-					return -1;
-				}
-				if(emuline[0]=='#')
-					continue;
-				if(emuline[0]=='\n')
-					continue;
-
-				if(emuline[0]=='[')
-				{
-					fclose(emufp);
-					return -1;
-				}
-
-				if(line++!=vemuLine)
-					continue;
-
-				emuline[strlen(emuline)-1]='\0';
-				vemuSize=strlen(emuline);
-				strcpy(vemuFmlData,emuline);
-
-				fclose(emufp);
-				break;
 			}
-			break;
 		}
+		else
+		if(strcmp(temp1->keydata,"trns")==0)
+		{
+			temp2=temp1->chld;
+			if(temp2!=NULL)
+			{
+				while(1)
+				{
+					char *position1;
+					position1=temp2->keydata;
+					char *position2;
+					position2=strchr(position1,'.');
+					if(position2==NULL)
+						return -1;
+					*position2='\0';
+					if(strcmp(position1,vemuLnkCode)!=0)
+					{
+						temp2=temp2->next;
+						if(temp2==NULL)
+							break;
+						continue;
+					}
+					position1=position2+1;
+					if(strcmp(position1,vemuTrnCode)!=0)
+					{
+						temp2=temp2->next;
+						if(temp2==NULL)
+							break;
+						continue;
+					}
+					temp3=temp2->chld;
+					if(temp3!=NULL)
+					{
+						while(1)
+						{
+							if(strcmp(temp3->keydata,"PkgData")==0)
+								vemuSndSize=sprintf(vemuSndFmlData,"%s",temp3->valdata);
+							else
+							if(strcmp(temp3->keydata,"PkgSndVisual")==0)
+							{
+								if(strcasecmp(temp3->valdata,"true")==0)
+									vemuSndVisual=0;
+								else
+								if(strcasecmp(temp3->valdata,"false")==0)
+									vemuSndVisual=1;
+								else
+									return -1;
+							}
+							else
+							if(strcmp(temp3->keydata,"PkgRcvVisual")==0)
+							{
+								if(strcasecmp(temp3->valdata,"true")==0)
+									vemuRcvVisual=0;
+								else
+								if(strcasecmp(temp3->valdata,"false")==0)
+									vemuRcvVisual=1;
+								else
+									return -1;
+							}
+							else
+							if(strcmp(temp3->keydata,"PkgHandName")==0)
+								strcpy(vemuPkgHandName,temp3->valdata);
+							else
+							if(strcmp(temp3->keydata,"PkgHandArgs")==0)
+								strcpy(vemuPkgHandArgs,temp3->valdata);
+							temp3=temp3->next;
+							if(temp3==NULL)
+								break;
+						}
+					}
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
+				}
+			}
+		}
+		temp1=temp1->next;
+		if(temp1==NULL)
+			break;
 	}
+	fxmlFree(&item);
+
+	if(vemuLnkHost[0]=='\0')
+		return -1;
+	if(vemuLnkPort[0]=='\0')
+		return -1;
+	if(vemuSndFmlData[0]=='\0')
+		return -1;
 
 	return 0;
 }
@@ -782,7 +681,7 @@ int femuHand(void)
 {
 	int result;
 
-	if(strcasecmp(vemuHandName,"null")==0)
+	if(strcasecmp(vemuPkgHandName,"null")==0)
 		return 0;
 
 	char path[64];
@@ -796,17 +695,17 @@ int femuHand(void)
 	}
 
 	void *dlhand;
-	dlhand=dlsym(handle,vemuHandName);
+	dlhand=dlsym(handle,vemuPkgHandName);
 	if(dlhand==NULL)
 	{
-		mlogError("dlsym",0,dlerror(),"[%s]",vemuHandName);
+		mlogError("dlsym",0,dlerror(),"[%s]",vemuPkgHandName);
 		return -1;
 	}
 
-	if(strcasecmp(vemuHandArgs,"null")==0)
-		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuFmlData,&vemuTmpData,&vemuSize,NULL);
+	if(strcasecmp(vemuPkgHandArgs,"null")==0)
+		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuSndFmlData,&vemuSndTmpData,&vemuSndSize,NULL);
 	else
-		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuFmlData,&vemuTmpData,&vemuSize,vemuHandArgs);
+		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuSndFmlData,&vemuSndTmpData,&vemuSndSize,vemuPkgHandArgs);
 	if(result<0)
 		return -1;
 
@@ -855,21 +754,12 @@ int femuExam(void)
 	strncpy(vemuLnkCode,position1,3);
 
 	position1=position2+1;
-	position2=strchr(position1,'_');
-	if(position2==NULL)
-	{
-		femuHelp();
-		return -1;
-	}
-	strncpy(vemuTrnCode,position1,position2-position1);
-
-	position1=position2+1;
 	if(strlen(position1)==0)
 	{
 		femuHelp();
 		return -1;
 	}
-	vemuLine=atoi(position1);
+	strcpy(vemuTrnCode,position1);
 
 	return 0;
 }

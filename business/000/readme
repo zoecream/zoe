@@ -34,25 +34,19 @@
 ### zoe --shut=000
 
 ## 测试交易.
-### emu --server 000_002_A01_0
-### emu --client 000_001_P01_0
+### emu --server 000_002_A01
+### emu --client 000_001_P01
 
 ## 测试常见失败原因.
 ### 从github克隆代码后,没有配置环境变量,没有创建项目目录结构(只有log目录),没有重新编译动态库.
 ### unixodbc没有驱动和配置,数据库没有启动,数据库中没有相应的用户和库表.
 
 # 文件作用.
-## ini/bsn.ini : 保存核心参数和杂项(目前有ETC的TermCode/UserCode/MainKey/WorkKey).
-## ini/lnk.ini : 渠道定义.
-                 原来的"服务渠道"现在叫"客户端渠道"!!!客户端通过客户端渠道调用客户端交易!!!
-                 原来的"客户渠道"现在叫"服务端渠道"!!!服务端通过服务端渠道提供服务端交易!!!
-## ini/trn.ini : 交易定义(目前只定义了交易的超时时间,0表示永不超时).
-## ini/pkn.ini : 报文定义.
-## ini/ret.ini : 返回代码对应的返回状态和返回信息.
-## emu/emu.ini : 模拟报文配置(-001_M01_femuLength_null分别表示不需要使用十六进制打印/001渠道/M01交易/femuLength函数/null参数).
-## emu/emu.c   : 模拟报文处理函数定义.
+## 000.xml     : 保存核心参数/业务参数/返回代码对应的返回状态和返回信息/渠道定义/交易定义.
+## pkg/pkn.ini : 报文定义.
 ## dbs/dbs.ini : 数据库服务配置(目前需要手动追加到/usr/local/unixodbc/etc/odbc.ini中).
 ## dbs/dbs.sql : 数据库对象定义(此业务目前有JournalNo/Journal两张表,建议不再使用下划线命名).
 ## trn/trn.c   : 业务逻辑(流水表的保存/具体交易).
 ## pkg/pkg.c   : 接口规范(报文头处理/PIN码生成/MAC码生成/8583报文打包解包).
-## .zoe        : 服务进程号.
+## emu/emu.xml : 模拟报文配置(其中PkgSndVisual/PkgRcvVisual表示发送/接收报文是否可视,为false为做一次十六进制转码再打印).
+## emu/emu.c   : 模拟报文处理函数定义.

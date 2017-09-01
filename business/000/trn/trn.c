@@ -223,7 +223,7 @@ void ftrnP01(int *error)
 
 	*error=-1;
 
-	raise(SIGSEGV);
+	//raise(SIGSEGV);
 
 	char *bsncode;
 	result=fmmpRefGet("pBsnCode",0,&bsncode,0);
