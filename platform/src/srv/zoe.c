@@ -597,9 +597,14 @@ void fzoeShut(void)
 		}
 
 		result=sigqueue(atoi(linuxid),SIGUSR1,(union sigval)0);
-		if(result==-1)
+		if(result==-1&&errno!=ESRCH)
 		{
 			mlogError("sigqueue",errno,strerror(errno),"[%d]",atoi(linuxid));
+			goto unlock;
+		}
+		if(result==-1&&errno==ESRCH)
+		{
+			printf("业务未启动\n");
 			goto unlock;
 		}
 
@@ -729,14 +734,19 @@ void fzoeList(void)
 			goto unlock;
 		}
 
-		printf("\033[0;31m管理线程[%s][%s]\033[0;37m\n",linuxid,posixid);
-
 		result=sigqueue(atoi(linuxid),SIGUSR2,(union sigval)0);
-		if(result==-1)
+		if(result==-1&&errno!=ESRCH)
 		{
 			mlogError("sigqueue",errno,strerror(errno),"[%d]",atoi(linuxid));
 			goto unlock;
 		}
+		if(result==-1&&errno==ESRCH)
+		{
+			printf("业务未启动\n");
+			goto unlock;
+		}
+
+		printf("\033[0;31m管理线程[%s][%s]\033[0;37m\n",linuxid,posixid);
 
 		int fifoid;
 		fifoid=open(fifopath,O_RDONLY);
