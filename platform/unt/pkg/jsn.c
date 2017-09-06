@@ -39,7 +39,7 @@ int main(void)
 	if(result!=0)
 		return -1;
 
-	result=fjsnExport(item,data);
+	result=fjsnExport(item,data,&size);
 	if(result!=0)
 		return -1;
 	printf("%s\n",data);
@@ -50,7 +50,7 @@ int main(void)
 	
 	//测试对象节点解包.
 	printf("%s\n",data);
-	result=fjsnImport(&item,data);
+	result=fjsnImport(&item,data,size);
 	if(result!=0)
 		return -1;
 
@@ -104,7 +104,7 @@ int main(void)
 	if(result!=0)
 		return -1;
 
-	result=fjsnExport(item,data);
+	result=fjsnExport(item,data,&size);
 	if(result!=0)
 		return -1;
 	printf("%s\n",data);
@@ -115,7 +115,7 @@ int main(void)
 	
 	//测试数组节点解包.
 	printf("%s\n",data);
-	result=fjsnImport(&item,data);
+	result=fjsnImport(&item,data,size);
 	if(result!=0)
 		return -1;
 
