@@ -3,8 +3,8 @@
     作者 : 陈乐群
 \*========================================*/
 
-#ifndef __JSN__
-#define __JSN__
+#ifndef __XML__
+#define __XML__
 
 #define cxmlNode 1
 #define cxmlAttr 2
