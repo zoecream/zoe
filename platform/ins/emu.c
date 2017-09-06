@@ -83,12 +83,12 @@ char vemuLnkCode[3+1];
 char vemuTrnCode[15+1];
 //行号.
 char vemuLine;
-//标记
+//标记.
 char vemuMark;
 //报文处理函数.
 char vemuHandName[64];
 //报文处理参数.
-char vemuArgument[64];
+char vemuHandArgs[64];
 
 //正式报文数据.
 char _vemuFmlData[1024*8];
@@ -220,6 +220,10 @@ int femuServer()
 		return -1;
 
 	result=femuLnkFile();
+	if(result==-1)
+		return -1;
+
+	result=femuEmuFile();
 	if(result==-1)
 		return -1;
 
@@ -361,6 +365,10 @@ int femuClient()
 		return -1;
 
 	result=femuLnkFile();
+	if(result==-1)
+		return -1;
+
+	result=femuEmuFile();
 	if(result==-1)
 		return -1;
 
@@ -688,7 +696,7 @@ int femuEmuFile(void)
 			if(position2==NULL)
 				return -1;
 			*position2='\0';
-			strcpy(vemuArgument,position1);
+			strcpy(vemuHandArgs,position1);
 
 			int line=0;
 
@@ -764,10 +772,10 @@ int femuHand(void)
 		return -1;
 	}
 
-	if(strcasecmp(vemuArgument,"null")==0)
+	if(strcasecmp(vemuHandArgs,"null")==0)
 		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuFmlData,&vemuTmpData,&vemuSize,NULL);
 	else
-		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuFmlData,&vemuTmpData,&vemuSize,vemuArgument);
+		result=((int(*)(char**,char**,int*,char*))dlhand)(&vemuFmlData,&vemuTmpData,&vemuSize,vemuHandArgs);
 	if(result<0)
 		return -1;
 
