@@ -60,18 +60,20 @@ int fjsnSelect(struct tjsnItem *item,char *path,char *data,int *size);
 /*========================================*\
     功能 : 将节点导出到报文
     参数 : (输入)节点
-           (输出)报文
+           (输出)报文数据
+           (输出)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnExport(struct tjsnItem *item,char *data);
+int fjsnExport(struct tjsnItem *item,char *data,int *size);
 /*========================================*\
     功能 : 将报文导入到节点
     参数 : (输出)节点
-           (输入)报文
+           (输入)报文数据
+           (输入)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fjsnImport(struct tjsnItem **item,char *data);
+int fjsnImport(struct tjsnItem **item,char *data,int size);
 
 #endif

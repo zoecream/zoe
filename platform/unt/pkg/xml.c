@@ -39,7 +39,7 @@ int main(void)
 	if(result!=0)
 		return -1;
 
-	result=fxmlExport(item,data);
+	result=fxmlExport(item,data,&size);
 	if(result!=0)
 		return -1;
 	printf("%s\n",data);
@@ -50,7 +50,7 @@ int main(void)
 	
 	//测试对象节点解包.
 	printf("%s\n",data);
-	result=fxmlImport(&item,data);
+	result=fxmlImport(&item,data,size);
 	if(result!=0)
 		return -1;
 

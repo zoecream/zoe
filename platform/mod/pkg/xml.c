@@ -383,8 +383,15 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 			return -1;
 		(*temp)->type=cxmlNode;
 	}
+	if(*(*data)++!='<')
+		return -1;
+	if(*(*data)++!='/')
+		return -1;
+	if(memcmp((*item)->keydata,*data,(*item)->keysize)!=0)
+		return -1;
 	(*data)+=(*item)->keysize;
-	(*data)+=3;
+	if(*(*data)++!='>')
+		return -1;
 
 	return 0;
 }
@@ -392,11 +399,12 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 /*========================================*\
     功能 : 将节点导出到报文
     参数 : (输入)节点
-           (输出)报文
+           (输出)报文数据
+           (输出)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlExport(struct txmlItem *item,char *data)
+int fxmlExport(struct txmlItem *item,char *data,int *size)
 {
 	char *temp;
 	temp=data;
@@ -404,17 +412,19 @@ int fxmlExport(struct txmlItem *item,char *data)
 	result=fxmlNodeExport(item,&temp);
 	if(result!=0)
 		return -1;
+	*size=temp-data;
 	return 0;
 }
 
 /*========================================*\
     功能 : 将报文导入到节点
     参数 : (输出)节点
-           (输入)报文
+           (输入)报文数据
+           (输入)报文长度
     返回 : (成功)0
            (失败)-1
 \*========================================*/
-int fxmlImport(struct txmlItem **item,char *data)
+int fxmlImport(struct txmlItem **item,char *data,int size)
 {
 	char *temp;
 	temp=data;
