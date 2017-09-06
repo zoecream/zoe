@@ -285,6 +285,7 @@ int fxmlAttrImport(struct txmlItem **item,char **data)
 	result=fxmlInit(item);
 	if(result!=0)
 		return -1;
+	(*item)->type=cxmlAttr;
 	(*item)->keysize=mxmlSize(*data,cxmlSpace"=");
 	(*item)->keydata=(char*)malloc((*item)->keysize);
 	if((*item)->keydata==NULL)
@@ -324,6 +325,7 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 	result=fxmlInit(item);
 	if(result!=0)
 		return -1;
+	(*item)->type=cxmlNode;
 	(*item)->keysize=mxmlSize(*data,cxmlSpace">");
 	(*item)->keydata=(char*)malloc((*item)->keysize);
 	if((*item)->keydata==NULL)
@@ -349,7 +351,6 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		result=fxmlAttrImport(temp,data);
 		if(result!=0)
 			return -1;
-		(*temp)->type=cxmlAttr;
 	}
 	(*data)++;
 	while(1)
@@ -381,7 +382,6 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		result=fxmlNodeImport(temp,data);
 		if(result!=0)
 			return -1;
-		(*temp)->type=cxmlNode;
 	}
 	if(*(*data)++!='<')
 		return -1;
