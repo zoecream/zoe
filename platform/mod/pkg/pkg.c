@@ -840,7 +840,6 @@ int fpkgRuleInit(char *bsncode)
 		mlogError("malloc",0,"0","[%d]",cpkgRuleSize);
 		return -1;
 	}
-	bzero(vpkgRuleHead,cpkgRuleSize);
 
 	struct tpkgRule *rulep;
 	rulep=(struct tpkgRule*)vpkgRuleHead;
@@ -860,14 +859,14 @@ int fpkgRuleInit(char *bsncode)
 	}
 
 	char text[2048];
-	int i=0;
+	int index=0;
 	int count=0;
-	int markpos;
+	int rulepos=-1;
 	int notepos=-1;
 
 	while(1)
 	{
-		text[i]=fgetc(pkgfp);
+		text[index]=fgetc(pkgfp);
 		if(ferror(pkgfp))
 		{
 			mlogError("fgets",errno,strerror(errno),"[]");
@@ -876,78 +875,87 @@ int fpkgRuleInit(char *bsncode)
 		if(feof(pkgfp))
 			break;
 
-		switch(text[i])
+		switch(text[index])
 		{
-			case '*':
-			if(i!=0&&text[i-1]=='/')
-			{
-				notepos=i-1;
-			}
-			break;
-			case '/':
-			if(i!=0&&text[i-1]=='*')
-			{
-				i=notepos-1;
-				notepos=-1;
-			}
+			case '#':
+			if(notepos==-1)
+				notepos=index;
 			break;
 
 			case '[':
-			markpos=i;
+			if(notepos==-1)
+			{
+				if(rulepos!=-1)
+					return -1;
+				rulepos=index;
+			}
 			break;
 			case ']':
-			strncpy(rulep->rulename,text+markpos+1,i-markpos-1);
-			rulep->rulename[i-markpos-1]='\0';
-			i=0;
-			continue;
+			if(notepos==-1)
+			{
+				if(rulepos==-1)
+					return -1;
+				strncpy(rulep->rulename,text+rulepos+1,index-rulepos-1);
+				rulep->rulename[index-rulepos-1]='\0';
+				index=0;
+				continue;
+			}
 
 			case '(':
-			count++;
-			if(i!=0&&text[i-1]!=' '&&text[i-1]!='('&&text[i-1]!=')')
+			if(notepos==-1)
+				count++;
+			if(index!=0&&text[index-1]!=' '&&text[index-1]!='('&&text[index-1]!=')')
 			{
-				text[i]=' ';
-				i++;
-				text[i]='(';
+				text[index]=' ';
+				index++;
+				text[index]='(';
 			}
 			break;
 			case ')':
-			count--;
-			if(i!=0&&text[i-1]!=' '&&text[i-1]!='('&&text[i-1]!=')')
+			if(notepos==-1)
+				count--;
+			if(index!=0&&text[index-1]!=' '&&text[index-1]!='('&&text[index-1]!=')')
 			{
-				text[i]=' ';
-				i++;
-				text[i]=')';
+				text[index]=' ';
+				index++;
+				text[index]=')';
 			}
 			break;
 
-			case ' ':
-			case '\t':
-			case '\v':
 			case '\n':
-			case '\r':
-			case '\f':
-			if(i==0||text[i-1]==' '||text[i-1]=='('||text[i-1]==')')
+			if(notepos!=-1)
+			{
+				index=notepos;
+				notepos=-1;
+			}
+			case '\t':
+			case ' ':
+			if(index==0||text[index-1]==' '||text[index-1]=='('||text[index-1]==')')
 				continue;
 			else
-				text[i]=' ';
+				text[index]=' ';
 		}
 
-		if(text[i++]!=')'||count!=0||notepos!=-1)
+		if(text[index++]!=')'||count!=0||notepos!=-1)
 			continue;
-
-		text[i]='\0';
-		i=0;
+		if(rulepos==-1)
+			return -1;
+		text[index]='\0';
+		index=0;
+		count=0;
+		rulepos=-1;
+		notepos=-1;
 
 		char *position1;
 		position1=text;
 		char *position2;
 
-		struct tpkgHand hand;
 		struct tpkgStack stack;
 		bzero(&stack,sizeof(stack));
+		struct tpkgHand hand;
 
-		struct tpkgHand *record;
-		record=handp;
+		struct tpkgHand *handr;
+		handr=handp;
 
 		struct tpkgNode *nodes[4];
 		char alloc;
@@ -957,19 +965,19 @@ int fpkgRuleInit(char *bsncode)
 		char stats[4];
 		bzero(stats,sizeof(stats));
 
-		char index;
-		index=0X00;
+		char middle;
+		middle=0X00;
 
 		while(1)
 		{
 			if(*position1=='\0')
 			{
 				if(strstr(rulep->rulename,"ENCODE")!=NULL)
-					rulep->handp=(char*)record;
+					rulep->handp=(char*)handr;
 				else
 				if(strstr(rulep->rulename,"DECODE")!=NULL)
 					rulep->handp=(char*)(handp+1);
-				rulep->handcount=record-handp;
+				rulep->handcount=handr-handp;
 				break;
 			}
 			else
@@ -1103,71 +1111,71 @@ int fpkgRuleInit(char *bsncode)
 					hand.nodecount=lasts[hand.nodeindex];
 					hand.nodep=(char*)nodep;
 					memcpy(nodep,nodes[hand.nodeindex],sizeof(struct tpkgNode)*lasts[hand.nodeindex]);
-					int j;
-					for(j=0;j<hand.nodecount;j++,nodep++)
+					int i;
+					for(i=0;i<hand.nodecount;i++,nodep++)
 					{
-						if(nodep->nodename[0]!=0X7E)
+						if(nodep->nodename[0]==0X7E)
+							continue;
+
+						char *position3;
+						position3=nodep->nodename;
+						char *position4;
+						position4=strchr(position3+1,'_');
+						if(position4==NULL)
 						{
-							char *position3;
-							position3=nodep->nodename;
-							char *position4;
-							position4=strchr(position3+1,'_');
-							if(position4==NULL)
-							{
-								nodep->handp=NULL;
-								continue;
-							}
+							nodep->handp=NULL;
+							continue;
+						}
 
-							*position4='\0';
-							memmove(nodep->handname,position4+1,strlen(position4+1));
-							position3=nodep->handname;
-							position4=strchr(position3,'_');
-							if(position4==NULL)
+						*position4='\0';
+						memmove(nodep->handname,position4+1,strlen(position4+1));
+						position3=nodep->handname;
+						position4=strchr(position3,'_');
+						if(position4==NULL)
+							return -1;
+						*position4='\0';
+						nodep->handargs[strlen(position4+1)]='\0';
+						memmove(nodep->handargs,position4+1,strlen(position4+1));
+
+						if(strcmp(nodep->handname,"fpkgUrlEnc")==0)
+							nodep->handp=fpkgUrlEnc;
+						else
+						if(strcmp(nodep->handname,"fpkgUrlDec")==0)
+							nodep->handp=fpkgUrlDec;
+						else
+						if(strcmp(nodep->handname,"fpkgHexEnc")==0)
+							nodep->handp=fpkgHexEnc;
+						else
+						if(strcmp(nodep->handname,"fpkgHexDec")==0)
+							nodep->handp=fpkgHexDec;
+						else
+						if(strcmp(nodep->handname,"fpkgB64Enc")==0)
+							nodep->handp=fpkgB64Enc;
+						else
+						if(strcmp(nodep->handname,"fpkgB64Dec")==0)
+							nodep->handp=fpkgB64Dec;
+						else
+						if(strcmp(nodep->handname,"fpkgDigEnc")==0)
+							nodep->handp=fpkgDigEnc;
+						else
+						if(strcmp(nodep->handname,"fpkgCipEnc")==0)
+							nodep->handp=fpkgCipEnc;
+						else
+						if(strcmp(nodep->handname,"fpkgCipDec")==0)
+							nodep->handp=fpkgCipDec;
+						else
+						if(strcmp(nodep->handname,"fpkgRsaEnc")==0)
+							nodep->handp=fpkgRsaEnc;
+						else
+						if(strcmp(nodep->handname,"fpkgRsaDec")==0)
+							nodep->handp=fpkgRsaDec;
+						else
+						{
+							nodep->handp=dlsym(bsnhandle,nodep->handname);
+							if(nodep->handp==NULL)
+							{
+								mlogError("dlsym",0,dlerror(),"[%s]",nodep->handname);
 								return -1;
-							*position4='\0';
-							nodep->handargs[strlen(position4+1)]='\0';
-							memmove(nodep->handargs,position4+1,strlen(position4+1));
-
-							if(strcmp(nodep->handname,"fpkgUrlEnc")==0)
-								nodep->handp=fpkgUrlEnc;
-							else
-							if(strcmp(nodep->handname,"fpkgUrlDec")==0)
-								nodep->handp=fpkgUrlDec;
-							else
-							if(strcmp(nodep->handname,"fpkgHexEnc")==0)
-								nodep->handp=fpkgHexEnc;
-							else
-							if(strcmp(nodep->handname,"fpkgHexDec")==0)
-								nodep->handp=fpkgHexDec;
-							else
-							if(strcmp(nodep->handname,"fpkgB64Enc")==0)
-								nodep->handp=fpkgB64Enc;
-							else
-							if(strcmp(nodep->handname,"fpkgB64Dec")==0)
-								nodep->handp=fpkgB64Dec;
-							else
-							if(strcmp(nodep->handname,"fpkgDigEnc")==0)
-								nodep->handp=fpkgDigEnc;
-							else
-							if(strcmp(nodep->handname,"fpkgCipEnc")==0)
-								nodep->handp=fpkgCipEnc;
-							else
-							if(strcmp(nodep->handname,"fpkgCipDec")==0)
-								nodep->handp=fpkgCipDec;
-							else
-							if(strcmp(nodep->handname,"fpkgRsaEnc")==0)
-								nodep->handp=fpkgRsaEnc;
-							else
-							if(strcmp(nodep->handname,"fpkgRsaDec")==0)
-								nodep->handp=fpkgRsaDec;
-							else
-							{
-								nodep->handp=dlsym(bsnhandle,nodep->handname);
-								if(nodep->handp==NULL)
-								{
-									mlogError("dlsym",0,dlerror(),"[%s]",nodep->handname);
-									return -1;
-								}
 							}
 						}
 					}
@@ -1189,8 +1197,8 @@ int fpkgRuleInit(char *bsncode)
 				{
 					struct tpkgNode *node;
 					node=nodes[stack.last->nodeindex]+lasts[stack.last->nodeindex];
-					node->nodename[0]=index;
-					hand.middle=index++;
+					node->nodename[0]=middle;
+					hand.middle=middle++;
 					stats[stack.last->nodeindex]=1;
 				}
 				else
@@ -1262,22 +1270,22 @@ int fpkgRuleInit(char *bsncode)
 					if(strncmp(stack.last->handname,"fpkgVar",7)==0)
 					{
 						position2=strchr(position1,' ');
-						int m;
-						int n;
-						for(m=0,n=0;m<position2-position1;m++)
+						int i;
+						int j;
+						for(i=0,j=0;i<position2-position1;i++)
 						{
-							if(m%2==0)
-								if(isdigit(position1[m]))
-									node->format[1+n]=position1[m]-'0'<<4;
+							if(i%2==0)
+								if(isdigit(position1[i]))
+									node->format[1+j]=position1[i]-'0'<<4;
 								else
-									node->format[1+n]=position1[m]-'A'+0X0A<<4;
+									node->format[1+j]=position1[i]-'A'+0X0A<<4;
 							else
-								if(isdigit(position1[m]))
-									node->format[1+n++]|=position1[m]-'0';
+								if(isdigit(position1[i]))
+									node->format[1+j++]|=position1[i]-'0';
 								else
-									node->format[1+n++]|=position1[m]-'A'+0X0A;
+									node->format[1+j++]|=position1[i]-'A'+0X0A;
 						}
-						node->format[1+n]='\0';
+						node->format[1+j]='\0';
 
 						node->format[0]=(position2-position1)/2;
 

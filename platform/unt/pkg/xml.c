@@ -13,10 +13,10 @@ int main(void)
 {
 	int result;
 
-	struct txmlItem *item;
-
 	char data[1024];
 	int size;
+
+	struct txmlItem *item;
 
 	//测试对象节点打包.
 	item=NULL;
