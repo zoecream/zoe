@@ -1521,7 +1521,6 @@ void fzoeManageBoot(void)
 		vzoeThrTail=(vzoeThrTail+1)%vzoeThrMaxCnt;
 	}
 	vzoeThrLive+=vzoeThrMinCnt;
-	vzoeThrBusy+=vzoeThrMinCnt;
 
 	struct timespec timeout;
 	bzero(&timeout,sizeof(timeout));
@@ -1671,7 +1670,6 @@ void fzoeManageBoot(void)
 					vzoeThrTail=(vzoeThrTail+1)%vzoeThrMaxCnt;
 				}
 				vzoeThrLive+=vzoeThrMinCnt;
-				vzoeThrBusy+=vzoeThrMinCnt;
 			}
 		}
 
@@ -1854,6 +1852,9 @@ void *fzoeEmployBoot(void *argument)
 
 	if(vzoeThrList[index].nature==0X7F)
 	{
+		int isinit;
+		isinit=1;
+
 		while(1)
 		{
 			int error;
@@ -1869,7 +1870,10 @@ void *fzoeEmployBoot(void *argument)
 				mlogError("pthread_mutex_lock",result,strerror(result),"");
 				return NULL;
 			}
-			vzoeThrBusy--;
+			if(isinit==0)
+				vzoeThrBusy--;
+			else
+				isinit=0;
 			while(vzoeTskHead==vzoeTskTail&&vzoeThrList[index].button!=0X01)
 			{
 				result=pthread_cond_wait(&vzoeCondNe,&vzoeMutex);
