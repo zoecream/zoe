@@ -113,8 +113,8 @@ pthread_cond_t vzoeCondNe;
 //任务列表非满条件变量.
 pthread_cond_t vzoeCondNf;
 
-//连接超时时间.
-int vzoeLisTime;
+//等待时间.
+int vzoeWaitTime;
 //连接列表尺寸.
 int vzoeLisSize;
 //任务列表尺寸.
@@ -629,9 +629,7 @@ void fzoeShut(void)
 		lock.l_type=F_UNLCK;
 		result=fcntl(lockid,F_SETLK,&lock);
 		if(result==-1)
-		{    
 			mlogError("fcntl",errno,strerror(errno),"");
-		}    
 		close(lockid);
 
 		unlink(fifopath);
@@ -746,7 +744,11 @@ void fzoeList(void)
 			goto unlock;
 		}
 
-		printf("\033[0;31m管理线程[%s][%s]\033[0;37m\n",linuxid,posixid);
+		char data[32768];
+		int size=0;
+
+		int index=0;
+		int count=0;
 
 		int fifoid;
 		fifoid=open(fifopath,O_RDONLY);
@@ -790,27 +792,32 @@ void fzoeList(void)
 				break;
 			}
 
+			if(nature!=0X7F)
+				index=0;
+			index++;
+			count++;
 			if(status==0X00&&nature==0X7F)
-				printf("\033[0;32m工作线程[%05d][%08X]-类型[普通]-状态[空闲]\033[0;37m\n",linuxid,posixid);
+				size+=sprintf(data+size,"\033[0;32m工作线程[%05d][%08X]-序号[%05d]-类型[普通]-状态[空闲]\033[0;37m\n",linuxid,posixid,index);
 			else
 			if(status==0X01&&nature==0X7F)
-				printf("\033[0;31m工作线程[%05d][%08X]-类型[普通]-状态[忙碌]\033[0;37m\n",linuxid,posixid);
+				size+=sprintf(data+size,"\033[0;31m工作线程[%05d][%08X]-序号[%05d]-类型[普通]-状态[忙碌]\033[0;37m\n",linuxid,posixid,index);
 			else
 			if(status==0X00&&nature!=0X7F)
-				printf("\033[0;32m工作线程[%05d][%08X]-类型[批量]-状态[空闲]\033[0;37m\n",linuxid,posixid);
+				size+=sprintf(data+size,"\033[0;32m工作线程[%05d][%08X]-序号[%05d]-类型[批量]-状态[空闲]\033[0;37m\n",linuxid,posixid,index);
 			else
 			if(status==0X01&&nature!=0X7F)
-				printf("\033[0;31m工作线程[%05d][%08X]-类型[批量]-状态[忙碌]\033[0;37m\n",linuxid,posixid);
+				size+=sprintf(data+size,"\033[0;31m工作线程[%05d][%08X]-序号[%05d]-类型[批量]-状态[忙碌]\033[0;37m\n",linuxid,posixid,index);
 		}
 		close(fifoid);
+
+		printf("\033[0;31m管理线程[%s][%s]-总数[%05d]\033[0;37m\n",linuxid,posixid,count);
+		printf("%s",data);
 
 		unlock:
 		lock.l_type=F_UNLCK;
 		result=fcntl(lockid,F_SETLK,&lock);
 		if(result==-1)
-		{    
 			mlogError("fcntl",errno,strerror(errno),"");
-		}    
 		close(lockid);
 	}
 
@@ -1154,8 +1161,8 @@ void fzoeManageBoot(void)
 		if(strncmp(bsnline,"ThrMaxCnt",9)==0)
 			vzoeThrMaxCnt=atoi(strchr(bsnline,'=')+1);
 		else
-		if(strncmp(bsnline,"LisTime",7)==0)
-			vzoeLisTime=atoi(strchr(bsnline,'=')+1);
+		if(strncmp(bsnline,"WaitTime",7)==0)
+			vzoeWaitTime=atoi(strchr(bsnline,'=')+1);
 		else
 		if(strncmp(bsnline,"LisSize",7)==0)
 			vzoeLisSize=atoi(strchr(bsnline,'=')+1);
@@ -1518,7 +1525,7 @@ void fzoeManageBoot(void)
 
 	struct timespec timeout;
 	bzero(&timeout,sizeof(timeout));
-	timeout.tv_sec=vzoeLisTime;
+	timeout.tv_sec=vzoeWaitTime;
 	int maxfd;
 	maxfd=0;
 	fd_set fmlfdset;
@@ -1587,6 +1594,8 @@ void fzoeManageBoot(void)
 	result=flogMove(1,"/dev/null");
 	if(result==-1)
 		exit(-1);
+
+	unsigned long long trncount=0;
 
 	while(1)
 	{
@@ -1721,6 +1730,10 @@ void fzoeManageBoot(void)
 							mlogError("pthread_mutex_unlock",result,strerror(result),"");
 							exit(-1);
 						}
+
+						trncount++;
+						if(trncount%10000==0)
+							mlogDebug("%d-%s",trncount,flogTime(3));
 					}
 				}
 			}
@@ -1755,6 +1768,7 @@ void *fzoeEmployBoot(void *argument)
 	result=fdbsInit(vzoeBsnCode);
 	if(result==-1)
 		exit(-1);
+	mlogDebug("");
 
 	vzoeFmlData[index]=(char*)malloc(vzoePkgSize);
 	if(vzoeFmlData[index]==NULL)

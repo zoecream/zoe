@@ -6,6 +6,7 @@
 !profile
 *.zoe*
 *.log
+*.tmp
 *.o
 *.so
 *.sw*
