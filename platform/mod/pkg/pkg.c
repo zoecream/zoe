@@ -824,13 +824,13 @@ int fpkgRuleInit(char *bsncode)
 		return -1;
 	}
 
-	char bsnpkgpath[64];
-	sprintf(bsnpkgpath,"%s/%s/pkg/libpkg.so",getenv("BUSINESS"),bsncode);
-	void *bsnhandle;
-	bsnhandle=dlopen(bsnpkgpath,RTLD_NOW|RTLD_GLOBAL);
-	if(bsnhandle==NULL)
+	char pkglibpath[64];
+	sprintf(pkglibpath,"%s/%s/pkg/libpkg.so",getenv("BUSINESS"),bsncode);
+	void *pkghandle;
+	pkghandle=dlopen(pkglibpath,RTLD_NOW|RTLD_GLOBAL);
+	if(pkghandle==NULL)
 	{
-		mlogError("dlopen",0,dlerror(),"[%d]",bsnpkgpath);
+		mlogError("dlopen",0,dlerror(),"[%d]",pkglibpath);
 		return -1;
 	}
 
@@ -848,13 +848,13 @@ int fpkgRuleInit(char *bsncode)
 	struct tpkgNode *nodep;
 	nodep=(struct tpkgNode*)(vpkgRuleHead+sizeof(struct tpkgRule)*cpkgRuleCount);
 
-	char pkgpath[64];
-	sprintf(pkgpath,"%s/%s/ini/pkg.ini",getenv("BUSINESS"),bsncode);
+	char pkginipath[64];
+	sprintf(pkginipath,"%s/%s/pkg/pkg.ini",getenv("BUSINESS"),bsncode);
 	FILE *pkgfp;
-	pkgfp=fopen(pkgpath,"r");
+	pkgfp=fopen(pkginipath,"r");
 	if(pkgfp==NULL)
 	{
-		mlogError("fopen",errno,strerror(errno),"[%s]",pkgpath);
+		mlogError("fopen",errno,strerror(errno),"[%s]",pkginipath);
 		return -1;
 	}
 
@@ -1064,7 +1064,7 @@ int fpkgRuleInit(char *bsncode)
 						hand.handp=fpkgRsaDec;
 					else
 					{
-						hand.handp=dlsym(bsnhandle,hand.handname);
+						hand.handp=dlsym(pkghandle,hand.handname);
 						if(hand.handp==NULL)
 						{
 							mlogError("dlsym",0,dlerror(),"[%s]",hand.handname);
@@ -1171,7 +1171,7 @@ int fpkgRuleInit(char *bsncode)
 							nodep->handp=fpkgRsaDec;
 						else
 						{
-							nodep->handp=dlsym(bsnhandle,nodep->handname);
+							nodep->handp=dlsym(pkghandle,nodep->handname);
 							if(nodep->handp==NULL)
 							{
 								mlogError("dlsym",0,dlerror(),"[%s]",nodep->handname);

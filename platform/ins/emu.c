@@ -538,6 +538,37 @@ int femuLnkFile(void)
 {
 	int result;
 
+	if(strcmp(vemuBsnCode,"000")==0)
+	{
+		if(strcmp(vemuLnkCode,"001")==0)
+		{
+			strcpy(vemuHost,"127.0.0.1");
+			strcpy(vemuPort,"10001");
+		}
+		else
+		if(strcmp(vemuLnkCode,"002")==0)
+		{
+			strcpy(vemuHost,"0.0.0.0");
+			strcpy(vemuPort,"10002");
+		}
+	}
+	else
+	if(strcmp(vemuBsnCode,"001")==0)
+	{
+		if(strcmp(vemuLnkCode,"001")==0)
+		{
+			strcpy(vemuHost,"127.0.0.1");
+			strcpy(vemuPort,"10011");
+		}
+		else
+		if(strcmp(vemuLnkCode,"002")==0)
+		{
+			strcpy(vemuHost,"0.0.0.0");
+			strcpy(vemuPort,"10012");
+		}
+	}
+	return 0;
+
 	char lnkpath[64];
 	sprintf(lnkpath,"%s/%s/ini/lnk.ini",getenv("BUSINESS"),vemuBsnCode);
 	FILE *lnkfp;

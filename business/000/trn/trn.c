@@ -10,7 +10,6 @@
 #include <signal.h>
 
 #include <log.h>
-#include <ini.h>
 #include <mmp.h>
 #include <dbs.h>
 
@@ -256,18 +255,12 @@ int ftrnP01(void)
 	flogDepend("Port[%s]",port);
 
 	char *a;
-	result=fmmpRefSet("pa",0,&a,8);
-	if(result==-1)
-		return error;
-	result=miniGetStr(bsncode,"001","a",a,0);
+	result=fmmpRefGet("pa",0,&a,0);
 	if(result==-1)
 		return error;
 	flogDepend("a[%s]",a);
 	char *b;
-	result=fmmpRefSet("pb",0,&b,8);
-	if(result==-1)
-		return error;
-	result=miniGetStr(bsncode,"001","b",b,0);
+	result=fmmpRefGet("pb",0,&b,0);
 	if(result==-1)
 		return error;
 	flogDepend("b[%s]",b);
@@ -391,6 +384,10 @@ int ftrnC01(void)
 	if(result==-1)
 		return error;
 	flogDepend("b[%s]",b);
+
+	result=fmmpValSet("pCliRetCode",0,"0001",0);
+	if(result==-1)
+		return -1;
 
 	error=0;
 	return error;

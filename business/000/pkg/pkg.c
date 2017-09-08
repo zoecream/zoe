@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include <log.h>
-#include <ini.h>
 #include <mmp.h>
 #include <dbs.h>
 

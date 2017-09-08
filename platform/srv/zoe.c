@@ -30,6 +30,7 @@
 #include <mmp.h>
 #include <pkg.h>
 #include <dbs.h>
+#include <xml.h>
 
 //业务代码.
 char vzoeBsnCode[3+1];
@@ -40,8 +41,6 @@ struct tzoeLnkInfo
 	char lnkcode[3+1];
 	//渠道类型.
 	char lnktype;
-	//渠道模式.
-	char lnkmode;
 	//渠道主机.
 	char lnkhost[15+1];
 	//渠道端口.
@@ -113,12 +112,12 @@ pthread_cond_t vzoeCondNe;
 //任务列表非满条件变量.
 pthread_cond_t vzoeCondNf;
 
-//等待时间.
-int vzoeWaitTime;
 //连接列表尺寸.
 int vzoeLisSize;
 //任务列表尺寸.
 int vzoeTskSize;
+//等待时间.
+int vzoeWaitTime;
 
 //线程编号.
 pthread_key_t vzoeIndex;
@@ -173,6 +172,27 @@ pthread_mutex_t *vzoeBusyMutex;
 pthread_cond_t *vzoeFreeCond;
 //批量忙碌内存池条件变量.
 pthread_cond_t *vzoeBusyCond;
+
+//业务参数列表.
+struct tzoeArgInfo
+{
+	char keydata[16];
+	char valdata[64];
+}vzoeArgList[16];
+//业务参数数量.
+int vzoeArgCount;
+//返回代码列表.
+struct tzoeRetInfo
+{
+	//返回代码.
+	char retcode[4+1];
+	//返回状态.
+	char retstat[1+1];
+	//返回信息.
+	char retinfo[60+1];
+}vzoeRetList[128];
+//返回代码数量.
+int vzoeRetCount;
 
 /*========================================*\
     功能 : 启动服务
@@ -1125,177 +1145,307 @@ void fzoeManageBoot(void)
 		exit(-1);
 	}
 
-	char bsninipath[64];
-	sprintf(bsninipath,"%s/%s/ini/bsn.ini",getenv("BUSINESS"),vzoeBsnCode);
-	FILE *bsnfp;
-	bsnfp=fopen(bsninipath,"r");
-	if(bsnfp==NULL)
+	vzoeLisSize=16;
+	vzoeTskSize=16;
+	vzoeWaitTime=8;
+	vzoeMmpSize=4096;
+	vzoePkgSize=4096;
+	vzoeThrMinCnt=4;
+	vzoeThrMinCnt=32;
+	vzoeBtcCnt=4;
+	vzoeCncCnt=4;
+
+	char xmlpath[64];
+	sprintf(xmlpath,"%s/%s/%s.xml",getenv("BUSINESS"),vzoeBsnCode,vzoeBsnCode);
+	FILE *xmlfp;
+	xmlfp=fopen(xmlpath,"r");
+	if(xmlfp==NULL)
 	{
-		mlogError("fopen",errno,strerror(errno),"[%s]",bsninipath);
+		mlogError("fopen",errno,strerror(errno),"[%s]",xmlpath);
 		fzoeBootHand(-1,0,0);
 		exit(-1);
 	}
+	char xmldata[16384];
+	int xmlsize;
+	xmlsize=0;
 	while(1)
 	{
-		char bsnline[128];
-		fgets(bsnline,sizeof(bsnline),bsnfp);
-		if(ferror(bsnfp))
+		fgets(xmldata+xmlsize,sizeof(xmldata)-xmlsize,xmlfp);
+		if(ferror(xmlfp))
 		{
 			mlogError("fgets",errno,strerror(errno),"");
 			fzoeBootHand(-1,0,0);
 			exit(-1);
 		}
-		if(feof(bsnfp))
+		if(feof(xmlfp))
 		{
-			fclose(bsnfp);
+			fclose(xmlfp);
 			break;
 		}
-		if(bsnline[0]=='#')
-			continue;
-		if(bsnline[0]=='\n')
-			continue;
-
-		if(strncmp(bsnline,"ThrMinCnt",9)==0)
-			vzoeThrMinCnt=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"ThrMaxCnt",9)==0)
-			vzoeThrMaxCnt=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"WaitTime",7)==0)
-			vzoeWaitTime=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"LisSize",7)==0)
-			vzoeLisSize=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"TskSize",7)==0)
-			vzoeTskSize=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"MmpSize",7)==0)
-			vzoeMmpSize=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"PkgSize",7)==0)
-			vzoePkgSize=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"BtcCnt",6)==0)
-			vzoeBtcCnt=atoi(strchr(bsnline,'=')+1);
-		else
-		if(strncmp(bsnline,"CncCnt",6)==0)
-			vzoeCncCnt=atoi(strchr(bsnline,'=')+1);
+		xmlsize+=strlen(xmldata+xmlsize);
 	}
-
-	char lnkinipath[64];
-	sprintf(lnkinipath,"%s/%s/ini/lnk.ini",getenv("BUSINESS"),vzoeBsnCode);
-	FILE *lnkfp;
-	lnkfp=fopen(lnkinipath,"r");
-	if(lnkfp==NULL)
+	struct txmlItem *item;
+	result=fxmlImport(&item,xmldata,xmlsize);
+	if(result==-1)
 	{
-		mlogError("fopen",errno,strerror(errno),"[%s]",lnkinipath);
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
+	struct txmlItem *temp1;
+	struct txmlItem *temp2;
+	struct txmlItem *temp3;
+	temp1=item->chld;
+	if(temp1==NULL)
+	{
 		fzoeBootHand(-1,0,0);
 		exit(-1);
 	}
 	while(1)
 	{
-		char lnkline[128];
-		fgets(lnkline,sizeof(lnkline),lnkfp);
-		if(ferror(lnkfp))
+		if(strcmp(temp1->keydata,"core")==0)
 		{
-			mlogError("fgets",errno,strerror(errno),"");
-			fzoeBootHand(-1,0,0);
-			exit(-1);
-		}
-		if(feof(lnkfp))
-		{
-			fclose(lnkfp);
-			break;
-		}
-		if(lnkline[0]=='#')
-			continue;
-		if(lnkline[0]=='\n')
-			continue;
-
-		if(lnkline[0]=='[')
-		{
-			strncpy(vzoeLnkList[vzoeLnkCount].lnkcode,lnkline+1,3);
-			vzoeLnkList[vzoeLnkCount].lnkcode[3]='\0';
-			vzoeLnkCount++;
-		}
-		else
-		if(strncmp(lnkline,"LnkType",7)==0)
-			vzoeLnkList[vzoeLnkCount-1].lnktype=*(strchr(lnkline,'=')+1);
-		else
-		if(strncmp(lnkline,"LnkMode",7)==0)
-			vzoeLnkList[vzoeLnkCount-1].lnkmode=*(strchr(lnkline,'=')+1);
-		else
-		if(strncmp(lnkline,"LnkHost",7)==0)
-		{
-			strcpy(vzoeLnkList[vzoeLnkCount-1].lnkhost,strchr(lnkline,'=')+1);
-			vzoeLnkList[vzoeLnkCount-1].lnkhost[strlen(vzoeLnkList[vzoeLnkCount-1].lnkhost)-1]='\0';
-		}
-		else
-		if(strncmp(lnkline,"LnkPort",7)==0)
-			vzoeLnkList[vzoeLnkCount-1].lnkport=atoi(strchr(lnkline,'=')+1);
-		else
-		if(strncmp(lnkline,"LnkRule",7)==0)
-		{
-			char *position1;
-			char *position2;
-			position1=strchr(lnkline,'=')+1;
-			position2=strchr(lnkline,',');
-			if(position2==NULL)
-				vzoeLnkList[vzoeLnkCount-1].lnkrule[0]=-atoi(position1);
-			else
+			temp2=temp1->chld;
+			if(temp2!=NULL)
 			{
-				vzoeLnkList[vzoeLnkCount-1].lnkrule[0]=atoi(position1);
-				position1=position2+1;
-				position2=strchr(position1,',');
-				vzoeLnkList[vzoeLnkCount-1].lnkrule[1]=atoi(position1);
-				position1=position2+1;
-				vzoeLnkList[vzoeLnkCount-1].lnkrule[2]=atoi(position1);
+				while(1)
+				{
+					if(strcmp(temp2->keydata,"LisSize")==0)
+						vzoeLisSize=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"TskSize")==0)
+						vzoeTskSize=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"WaitTime")==0)
+						vzoeWaitTime=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"MmpSize")==0)
+						vzoeMmpSize=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"PkgSize")==0)
+						vzoePkgSize=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"ThrMinCnt")==0)
+						vzoeThrMinCnt=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"ThrMaxCnt")==0)
+						vzoeThrMaxCnt=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"BtcCnt")==0)
+						vzoeBtcCnt=atoi(temp2->valdata);
+					else
+					if(strcmp(temp2->keydata,"CncCnt")==0)
+						vzoeCncCnt=atoi(temp2->valdata);
+					else
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
+				}
 			}
 		}
-	}
-
-	char trninipath[64];
-	sprintf(trninipath,"%s/%s/ini/trn.ini",getenv("BUSINESS"),vzoeBsnCode);
-	FILE *trnfp;
-	trnfp=fopen(trninipath,"r");
-	if(trnfp==NULL)
-	{
-		mlogError("fopen",errno,strerror(errno),"[%s]",trninipath);
-		fzoeBootHand(-1,0,0);
-		exit(-1);
-	}
-	while(1)
-	{
-		char trnline[128];
-		fgets(trnline,sizeof(trnline),trnfp);
-		if(ferror(trnfp))
+		else
+		if(strcmp(temp1->keydata,"args")==0)
 		{
-			mlogError("fgets",errno,strerror(errno),"");
+			temp2=temp1->chld;
+			if(temp2!=NULL)
+			{
+				while(1)
+				{
+					strcpy(vzoeArgList[vzoeArgCount].keydata,temp2->keydata);
+					strcpy(vzoeArgList[vzoeArgCount].valdata,temp2->valdata);
+					vzoeArgCount++;
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
+				}
+			}
+		}
+		else
+		if(strcmp(temp1->keydata,"rets")==0)
+		{
+			temp2=temp1->chld;
+			if(temp2!=NULL)
+			{
+				while(1)
+				{
+					char stat;
+					if(strcmp(temp2->keydata,"success")==0)
+						stat='S';
+					else
+					if(strcmp(temp2->keydata,"failure")==0)
+						stat='F';
+					else
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					temp3=temp2->chld;
+					if(temp3!=NULL)
+					{
+						while(1)
+						{
+							strcpy(vzoeRetList[vzoeRetCount].retcode,temp3->keydata);
+							vzoeRetList[vzoeRetCount].retstat[0]=stat;
+							strcpy(vzoeRetList[vzoeRetCount].retinfo,temp3->valdata);
+							vzoeRetCount++;
+							temp3=temp3->next;
+							if(temp3==NULL)
+								break;
+						}
+					}
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
+				}
+			}
+		}
+		else
+		if(strcmp(temp1->keydata,"lnks")==0)
+		{
+			temp2=temp1->chld;
+			if(temp2!=NULL)
+			{
+				while(1)
+				{
+					if(temp2->keysize!=3)
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					strcpy(vzoeLnkList[vzoeLnkCount].lnkcode,temp2->keydata);
+					temp3=temp2->chld;
+					if(temp3!=NULL)
+					{
+						while(1)
+						{
+							if(strcmp(temp3->keydata,"LnkType")==0)
+								vzoeLnkList[vzoeLnkCount].lnktype=temp3->valdata[0];
+							else
+							if(strcmp(temp3->keydata,"LnkHost")==0)
+								strcpy(vzoeLnkList[vzoeLnkCount].lnkhost,temp3->valdata);
+							else
+							if(strcmp(temp3->keydata,"LnkPort")==0)
+								vzoeLnkList[vzoeLnkCount].lnkport=atoi(temp3->valdata);
+							else
+							if(strcmp(temp3->keydata,"LnkRule")==0)
+							{
+								char *position1;
+								position1=temp3->valdata;
+								char *position2;
+								position2=strchr(position1,',');
+								if(position2==NULL)
+								{
+									vzoeLnkList[vzoeLnkCount].lnkrule[0]=-atoi(position1);
+								}
+								else
+								{
+									vzoeLnkList[vzoeLnkCount].lnkrule[0]=atoi(position1);
+									position1=position2+1;
+									vzoeLnkList[vzoeLnkCount].lnkrule[1]=atoi(position1);
+									position2=strchr(position1,',');
+									if(position2==NULL)
+									{
+										fzoeBootHand(-1,0,0);
+										exit(-1);
+									}
+									position1=position2+1;
+									vzoeLnkList[vzoeLnkCount].lnkrule[2]=atoi(position1);
+								}
+							}
+							temp3=temp3->next;
+							if(temp3==NULL)
+								break;
+						}
+					}
+					if
+					(
+						vzoeLnkList[vzoeLnkCount].lnktype=='\0'||
+						vzoeLnkList[vzoeLnkCount].lnkhost[0]=='\0'||
+						vzoeLnkList[vzoeLnkCount].lnkport==0
+					)
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					vzoeLnkCount++;
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
+				}
+			}
+		}
+		else
+		if(strcmp(temp1->keydata,"trns")==0)
+		{
+			temp2=temp1->chld;
+			if(temp2!=NULL)
+			{
+				while(1)
+				{
+					char *position1;
+					position1=temp2->keydata;
+					char *position2;
+					position2=strchr(position1,'.');
+					if(position2==NULL)
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					if(position2-position1!=3)
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					int found;
+					found=0;
+					for(i=0;i<vzoeLnkCount;i++)
+					{
+						if(strncmp(vzoeLnkList[i].lnkcode,position1,position2-position1)==0)
+						{
+							found=1;
+							break;
+						}
+					}
+					if(found==0)
+					{
+						fzoeBootHand(-1,0,0);
+						exit(-1);
+					}
+					strncpy(vzoeTrnList[vzoeTrnCount].lnkcode,position1,position2-position1);
+					vzoeTrnList[vzoeTrnCount].lnkcode[3]='_';
+					position1=position2+1;
+					strcpy(vzoeTrnList[vzoeTrnCount].trncode,position1);
+					vzoeTrnList[vzoeTrnCount].trntime=atoi(temp2->valdata);
+					vzoeTrnCount++;
+					temp2=temp2->next;
+					if(temp2==NULL)
+						break;
+				}
+			}
+		}
+		else
+		{
 			fzoeBootHand(-1,0,0);
 			exit(-1);
 		}
-		if(feof(trnfp))
-		{
-			fclose(trnfp);
+		temp1=temp1->next;
+		if(temp1==NULL)
 			break;
-		}
-		if(trnline[0]=='#')
-			continue;
-		if(trnline[0]=='\n')
-			continue;
-
-		if(trnline[0]=='[')
-		{
-			strncpy(vzoeTrnList[vzoeTrnCount].lnkcode,trnline+1,4);
-			strncpy(vzoeTrnList[vzoeTrnCount].trncode,trnline+5,strchr(trnline,']')-trnline-5);
-			vzoeTrnList[vzoeTrnCount].trncode[strchr(trnline,']')-trnline-5]='\0';
-			vzoeTrnCount++;
-		}
-		else
-		if(strncmp(trnline,"TrnTime",7)==0)
-			vzoeTrnList[vzoeTrnCount-1].trntime=atoi(strchr(trnline,'=')+1);
 	}
+	if(vzoeLnkCount==0)
+	{
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
+	if(vzoeTrnCount==0)
+	{
+		fzoeBootHand(-1,0,0);
+		exit(-1);
+	}
+	fxmlFree(&item);
 
 	qsort(vzoeLnkList,vzoeLnkCount,sizeof(struct tzoeLnkInfo),(int(*)(const void*,const void*))strcmp);
 	qsort(vzoeTrnList,vzoeTrnCount,sizeof(struct tzoeTrnInfo),(int(*)(const void*,const void*))strcmp);
@@ -1654,7 +1804,7 @@ void fzoeManageBoot(void)
 		{
 			if(vzoeThrBusy==vzoeThrLive&&vzoeThrLive<vzoeThrMaxCnt)
 			{
-				for(j=0;j<vzoeThrMinCnt;j++)
+				for(i=0;i<vzoeThrMinCnt;i++)
 				{
 					result=pthread_create(&vzoeThrList[vzoeThrTail].posixid,NULL,fzoeEmployBoot,&vzoeThrList[vzoeThrTail]);
 					if(result!=0)
@@ -1766,7 +1916,6 @@ void *fzoeEmployBoot(void *argument)
 	result=fdbsInit(vzoeBsnCode);
 	if(result==-1)
 		exit(-1);
-	mlogDebug("");
 
 	vzoeFmlData[index]=(char*)malloc(vzoePkgSize);
 	if(vzoeFmlData[index]==NULL)
@@ -1863,6 +2012,16 @@ void *fzoeEmployBoot(void *argument)
 			result=fmmpRnit(vzoeMmpSize);
 			if(result==-1)
 				return NULL;
+
+			int i;
+			for(i=0;i<vzoeArgCount;i++)
+			{
+				char keydata[32];
+				sprintf(keydata,"p%s",vzoeArgList[i].keydata);
+				result=fmmpValSet(keydata,0,vzoeArgList[i].valdata,0);
+				if(result==-1)
+					exit(-1);
+			}
 
 			result=pthread_mutex_lock(&vzoeMutex);
 			if(result!=0)
@@ -2158,7 +2317,7 @@ void *fzoeEmployBoot(void *argument)
 			tag12setretsmmp:;
 			char cliretcode[4+1];
 			char cliretstat[1+1];
-			char cliretinfo[8+1];
+			char cliretinfo[60+1];
 			result=fmmpValGet("pCliRetCode",0,cliretcode,0);
 			if(result==-1)
 			{
@@ -2183,68 +2342,22 @@ void *fzoeEmployBoot(void *argument)
 			{
 				cliretstat[0]='\0';
 				cliretinfo[0]='\0';
-
-				char errpath[64];
-				sprintf(errpath,"%s/%s/ini/ret.ini",getenv("BUSINESS"),vzoeBsnCode);
-				FILE *errfp;
-				errfp=fopen(errpath,"r");
-				if(errfp==NULL)
+				int i;
+				for(i=0;i<vzoeRetCount;i++)
 				{
-					mlogError("fopen",errno,strerror(errno),"[%s]",errpath);
-					goto tag13fpkgenc;
-				}
-				while(1)
-				{
-					char errline[128];
-					fgets(errline,sizeof(errline),errfp);
-					if(ferror(errfp))
+					if(strcmp(cliretcode,vzoeRetList[i].retcode)==0)
 					{
-						mlogError("fgets",errno,strerror(errno),"");
-						goto tag13fpkgenc;
-					}
-					if(feof(errfp))
-					{
-						fclose(errfp);
+						cliretstat[0]=vzoeRetList[i].retstat[0];
+						cliretstat[1]='\0';
+						strcpy(cliretinfo,vzoeRetList[i].retinfo);
 						break;
 					}
-					if(errline[0]=='#')
-						continue;
-					if(errline[0]=='\n')
-						continue;
-
-					if(errline[0]=='[')
-					{
-						if(strncmp(errline+1,"SUCCESS",7)==0)
-							strcpy(cliretstat,"S");
-						else
-						if(strncmp(errline+1,"FAILURE",7)==0)
-							strcpy(cliretstat,"F");
-						continue;
-					}
-
-					char *position;
-					position=strchr(errline,'=');
-					if(position==NULL)
-						continue;
-					*position='\0';
-					if(strcmp(errline,cliretcode)!=0)
-						continue;
-
-					int size;
-					size=strlen(position+1)-1;
-					strncpy(cliretinfo,position+1,size);
-					cliretinfo[size]='\0';
-
-					fclose(errfp);
-					break;
 				}
-
-				if(cliretinfo[0]=='\0')
+				if(cliretstat[0]=='\0')
 				{
 					strcpy(cliretstat,"U");
 					strcpy(cliretinfo,"未知错误");
 				}
-
 				fmmpValSet("pCliRetStat",0,cliretstat,0);
 				fmmpValSet("pCliRetInfo",0,cliretinfo,0);
 			}
@@ -2337,6 +2450,16 @@ void *fzoeEmployBoot(void *argument)
 			result=fmmpRnit(vzoeMmpSize);
 			if(result==-1)
 				return NULL;
+
+			int i;
+			for(i=0;i<vzoeArgCount;i++)
+			{
+				char keydata[32];
+				sprintf(keydata,"p%s",vzoeArgList[i].keydata);
+				result=fmmpValSet(keydata,0,vzoeArgList[i].valdata,0);
+				if(result==-1)
+					exit(-1);
+			}
 
 			void *old;
 			void *new;
@@ -2557,68 +2680,22 @@ void *fzoeEmployBoot(void *argument)
 			{
 				cliretstat[0]='\0';
 				cliretinfo[0]='\0';
-
-				char errpath[64];
-				sprintf(errpath,"%s/%s/ini/ret.ini",getenv("BUSINESS"),vzoeBsnCode);
-				FILE *errfp;
-				errfp=fopen(errpath,"r");
-				if(errfp==NULL)
+				int i;
+				for(i=0;i<vzoeRetCount;i++)
 				{
-					mlogError("fopen",errno,strerror(errno),"[%s]",errpath);
-					goto tag13fpkgenc;
-				}
-				while(1)
-				{
-					char errline[128];
-					fgets(errline,sizeof(errline),errfp);
-					if(ferror(errfp))
+					if(strcmp(cliretcode,vzoeRetList[i].retcode)==0)
 					{
-						mlogError("fgets",errno,strerror(errno),"");
-						goto tag13fpkgenc;
-					}
-					if(feof(errfp))
-					{
-						fclose(errfp);
+						cliretstat[0]=vzoeRetList[i].retstat[0];
+						cliretstat[1]='\0';
+						strcpy(cliretinfo,vzoeRetList[i].retinfo);
 						break;
 					}
-					if(errline[0]=='#')
-						continue;
-					if(errline[0]=='\n')
-						continue;
-
-					if(errline[0]=='[')
-					{
-						if(strncmp(errline+1,"SUCCESS",7)==0)
-							strcpy(cliretstat,"S");
-						else
-						if(strncmp(errline+1,"FAILURE",7)==0)
-							strcpy(cliretstat,"F");
-						continue;
-					}
-
-					char *position;
-					position=strchr(errline,'=');
-					if(position==NULL)
-						continue;
-					*position='\0';
-					if(strcmp(errline,cliretcode)!=0)
-						continue;
-
-					int size;
-					size=strlen(position+1)-1;
-					strncpy(cliretinfo,position+1,size);
-					cliretinfo[size]='\0';
-
-					fclose(errfp);
-					break;
 				}
-
-				if(cliretinfo[0]=='\0')
+				if(cliretstat[0]=='\0')
 				{
 					strcpy(cliretstat,"U");
 					strcpy(cliretinfo,"未知错误");
 				}
-
 				fmmpValSet("pCliRetStat",0,cliretstat,0);
 				fmmpValSet("pCliRetInfo",0,cliretinfo,0);
 			}

@@ -22,3 +22,12 @@ touch:
 	@touch $(SOURCE)
 clean:
 	@rm -f $(TARGET)
+
+install:
+	@tar czvf $(BSNCODE).tgz\
+		profile\
+		$(BSNCODE).xml\
+		dbs/dbs.ini\
+		pkg/pkg.ini\
+		pkg/libpkg.so\
+		trn/libtrn.so

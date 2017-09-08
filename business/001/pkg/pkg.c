@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include <log.h>
-#include <ini.h>
 #include <mmp.h>
 #include <dbs.h>
 
@@ -149,7 +148,7 @@ int fpkgPinEnc(char *srcdata,int srcsize,char *dstdata,int *dstsize)
 	char *tmpdata=_tmpdata;
 	int size;
 
-	result=miniGetStr(bsncode,"etc","MainKey",fmldata,&size);
+	result=fmmpValGet("pMainKey",0,fmldata,&size);
 	if(result==-1)
 		return -1;
 	result=fpkgHexDec(&fmldata,&tmpdata,&size,"upper");
@@ -210,7 +209,7 @@ int fpkgMacEnc(char *srcdata,int srcsize,char *dstdata,int *dstsize)
 		for(j=0;j<8;j++)
 			dstdata[j]^=srcdata[8*i+j];
 
-	result=miniGetStr(bsncode,"etc","WorkKey",fmldata,&size);
+	result=fmmpValGet("pWorkKey",0,fmldata,&size);
 	if(result==-1)
 		return -1;
 	result=fpkgHexDec(&fmldata,&tmpdata,&size,"upper");
@@ -291,7 +290,7 @@ int fpkg5110Enc(char **fmldata,char **tmpdata,int *size,char *argument)
 	memcpy(*fmldata+21,_fmldata,_size);
 
 	char termcode[14+1];
-	result=miniGetStr(bsncode,"etc","termcode",termcode,0);
+	result=fmmpValGet("pTermCode",0,termcode,0);
 	if(result==-1)
 		return -1;
 	memcpy(*fmldata+25,termcode,14);
@@ -299,7 +298,7 @@ int fpkg5110Enc(char **fmldata,char **tmpdata,int *size,char *argument)
 	memcpy(*fmldata+39,"013",3);
 
 	char usercode[13+1];
-	result=miniGetStr(bsncode,"etc","usercode",usercode,0);
+	result=fmmpValGet("pUserCode",0,usercode,0);
 	if(result==-1)
 		return -1;
 	memcpy(*fmldata+42,usercode,13);
@@ -358,6 +357,7 @@ int fpkg5110Dec(char **fmldata,char **tmpdata,int *size,char *argument)
 	result=fpkgHexEnc(&_fmldata,&_tmpdata,&_size,"upper");
 	if(result==-1)
 		return -1;
+	/*
 	if(*(*fmldata+64)=='1')
 		result=miniSetStr(bsncode,"etc","WorkKey",_fmldata,_size);
 	else
@@ -365,6 +365,7 @@ int fpkg5110Dec(char **fmldata,char **tmpdata,int *size,char *argument)
 		result=miniSetStr(bsncode,"etc","MainKey",_fmldata,_size);
 	if(result==-1)
 		return -1;
+	*/
 
 	return 0;
 }
