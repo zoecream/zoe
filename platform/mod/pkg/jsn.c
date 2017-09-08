@@ -129,10 +129,11 @@ int fjsnCreate(struct tjsnItem **item,char *path,char *data,int size)
 				if(*(path-1)=='/')
 				{
 					(*item)->keysize=mjsnSize(path,"/:");
-					(*item)->keydata=(char*)malloc((*item)->keysize);
+					(*item)->keydata=(char*)malloc((*item)->keysize+1);
 					if((*item)->keydata==NULL)
 						return -1;
 					memcpy((*item)->keydata,path,(*item)->keysize);
+					(*item)->keydata[(*item)->keysize]='\0';
 				}
 				break;
 			}
@@ -178,10 +179,11 @@ int fjsnCreate(struct tjsnItem **item,char *path,char *data,int size)
 			(*item)->type=cjsnStr;
 	}
 	(*item)->valsize=size;
-	(*item)->valdata=(char*)malloc((*item)->valsize);
+	(*item)->valdata=(char*)malloc((*item)->valsize+1);
 	if((*item)->valdata==NULL)
 		return -1;
 	memcpy((*item)->valdata,data,(*item)->valsize);
+	(*item)->valdata[(*item)->valsize]='\0';
 	item=temp;
 	return 0;
 }
@@ -382,10 +384,11 @@ int fjsnStrImport(struct tjsnItem **item,char **data)
 		return -1;
 	(*data)++;
 	(*item)->valsize=mjsnSize(*data,"\"");
-	(*item)->valdata=(char*)malloc((*item)->valsize);
+	(*item)->valdata=(char*)malloc((*item)->valsize+1);
 	if((*item)->valdata==NULL)
 		return -1;
 	memcpy((*item)->valdata,*data,(*item)->valsize);
+	(*item)->valdata[(*item)->valsize]='\0';
 	*data+=(*item)->valsize;
 	(*data)++;
 
@@ -407,10 +410,11 @@ int fjsnNumImport(struct tjsnItem **item,char **data)
 	if(result!=0)
 		return -1;
 	(*item)->valsize=mjsnSize(*data,",]}");
-	(*item)->valdata=(char*)malloc((*item)->valsize);
+	(*item)->valdata=(char*)malloc((*item)->valsize+1);
 	if((*item)->valdata==NULL)
 		return -1;
 	memcpy((*item)->valdata,*data,(*item)->valsize);
+	(*item)->valdata[(*item)->valsize]='\0';
 	*data+=(*item)->valsize;
 
 	return 0;
@@ -489,10 +493,11 @@ int fjsnObjImport(struct tjsnItem **item,char **data)
 		int keysize;
 		char *keydata;
 		keysize=mjsnSize(*data,"\"");
-		keydata=(char*)malloc(keysize);
+		keydata=(char*)malloc(keysize+1);
 		if(keydata==NULL)
 			return -1;
 		memcpy(keydata,*data,keysize);
+		keydata[keysize]='\0';
 		*data+=keysize;
 		(*data)++;
 		mjsnSkip(data,cjsnSpace);

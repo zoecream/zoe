@@ -70,10 +70,11 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 			return -1;
 		(*item)->type=cxmlNode;
 		(*item)->keysize=mxmlSize(path+1,"/#");
-		(*item)->keydata=(char*)malloc((*item)->keysize);
+		(*item)->keydata=(char*)malloc((*item)->keysize+1);
 		if((*item)->keydata==NULL)
 			return -1;
 		memcpy((*item)->keydata,path+1,(*item)->keysize);
+		(*item)->keydata[(*item)->keysize]='\0';
 	}
 	else
 	{
@@ -112,10 +113,11 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 				if(*path=='#')
 					(*item)->type=cxmlAttr;
 				(*item)->keysize=mxmlSize(path+1,"/#:");
-				(*item)->keydata=(char*)malloc((*item)->keysize);
+				(*item)->keydata=(char*)malloc((*item)->keysize+1);
 				if((*item)->keydata==NULL)
 					return -1;
 				memcpy((*item)->keydata,path+1,(*item)->keysize);
+				(*item)->keydata[(*item)->keysize]='\0';
 				break;
 			}
 			if(*path=='/'&&(*item)->type!=cxmlNode)
@@ -141,10 +143,11 @@ int fxmlCreate(struct txmlItem **item,char *path,char *data,int size)
 	if((*item)->valdata!=NULL||(*item)->valsize!=0)
 		return -1;
 	(*item)->valsize=size;
-	(*item)->valdata=(char*)malloc((*item)->valsize);
+	(*item)->valdata=(char*)malloc((*item)->valsize+1);
 	if((*item)->valdata==NULL)
 		return -1;
 	memcpy((*item)->valdata,data,(*item)->valsize);
+	(*item)->valdata[(*item)->valsize]='\0';
 	item=temp;
 	return 0;
 }
@@ -288,10 +291,11 @@ int fxmlAttrImport(struct txmlItem **item,char **data)
 	mxmlSkip(data,cxmlSpace);
 	(*item)->type=cxmlAttr;
 	(*item)->keysize=mxmlSize(*data,cxmlSpace"=");
-	(*item)->keydata=(char*)malloc((*item)->keysize);
+	(*item)->keydata=(char*)malloc((*item)->keysize+1);
 	if((*item)->keydata==NULL)
 		return -1;
 	memcpy((*item)->keydata,*data,(*item)->keysize);
+	(*item)->keydata[(*item)->keysize]='\0';
 	*data+=(*item)->keysize;
 	mxmlSkip(data,cxmlSpace);
 	if(*(*data)++!='=')
@@ -300,10 +304,11 @@ int fxmlAttrImport(struct txmlItem **item,char **data)
 	if(*(*data)++!='\"')
 		return -1;
 	(*item)->valsize=mxmlSize(*data,"\"");
-	(*item)->valdata=(char*)malloc((*item)->valsize);
+	(*item)->valdata=(char*)malloc((*item)->valsize+1);
 	if((*item)->valdata==NULL)
 		return -1;
 	memcpy((*item)->valdata,*data,(*item)->valsize);
+	(*item)->valdata[(*item)->valsize]='\0';
 	*data+=(*item)->valsize;
 	(*data)++;
 	mxmlSkip(data,cxmlSpace);
@@ -339,10 +344,11 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		return -1;
 	(*item)->type=cxmlNode;
 	(*item)->keysize=mxmlSize(*data,cxmlSpace">");
-	(*item)->keydata=(char*)malloc((*item)->keysize);
+	(*item)->keydata=(char*)malloc((*item)->keysize+1);
 	if((*item)->keydata==NULL)
 		return -1;
 	memcpy((*item)->keydata,*data,(*item)->keysize);
+	(*item)->keydata[(*item)->keysize]='\0';
 	*data+=(*item)->keysize;
 	while(1)
 	{
@@ -382,10 +388,11 @@ int fxmlNodeImport(struct txmlItem **item,char **data)
 		if(**data!='<')
 		{
 			(*item)->valsize=mxmlSize(*data,"<");
-			(*item)->valdata=(char*)malloc((*item)->valsize);
+			(*item)->valdata=(char*)malloc((*item)->valsize+1);
 			if((*item)->valdata==NULL)
 				return -1;
 			memcpy((*item)->valdata,*data,(*item)->valsize);
+			(*item)->valdata[(*item)->valsize]='\0';
 			*data+=(*item)->valsize;
 			continue;
 		}
