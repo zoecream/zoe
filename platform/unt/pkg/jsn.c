@@ -83,6 +83,45 @@ int main(void)
 
 	printf("========================================\n");
 
+	/*
+	//测试对象节点解包.
+	strcpy(data," { \"a\" : 1 , \"b\" : 2 , \"c\" : { \"d\" : 4 , \"e\" : 5.5555 } , \"f\" : [ 7 , 8 ] } ");
+	size=strlen(data);
+	printf("%s\n",data);
+	result=fjsnImport(&item,data,size);
+	if(result!=0)
+		return -1;
+
+	result=fjsnSelect(item,"/a",data,&size);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",size,data);
+	result=fjsnSelect(item,"/b",data,&size);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",size,data);
+	result=fjsnSelect(item,"/c/d",data,&size);
+	if(result!=0)
+		return -1;
+	printf("d:%.*s\n",size,data);
+	result=fjsnSelect(item,"/c/e",data,&size);
+	if(result!=0)
+		return -1;
+	printf("e:%.*s\n",size,data);
+	result=fjsnSelect(item,"/f:0",data,&size);
+	if(result!=0)
+		return -1;
+	printf("f:%.*s\n",size,data);
+	result=fjsnSelect(item,"/f:1",data,&size);
+	if(result!=0)
+		return -1;
+	printf("f:%.*s\n",size,data);
+
+	fjsnFree(&item);
+
+	printf("========================================\n");
+	*/
+
 	//测试数组节点打包.
 	item=NULL;
 	result=fjsnCreate(&item,":0/a","1",1);
@@ -147,6 +186,44 @@ int main(void)
 	fjsnFree(&item);
 
 	printf("========================================\n");
+	
+	/*
+	//测试数组节点解包.
+	strcpy(data," [ { \"a\" : 1 , \"b\" : 2 } , { \"a\" : 3 , \"b\" : 4 } , { \"a\" : 5 , \"b\" : 6 } ] ");
+	printf("%s\n",data);
+	result=fjsnImport(&item,data,size);
+	if(result!=0)
+		return -1;
+
+	result=fjsnSelect(item,":0/a",data,&size);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",size,data);
+	result=fjsnSelect(item,":0/b",data,&size);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",size,data);
+	result=fjsnSelect(item,":1/a",data,&size);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",size,data);
+	result=fjsnSelect(item,":1/b",data,&size);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",size,data);
+	result=fjsnSelect(item,":2/a",data,&size);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",size,data);
+	result=fjsnSelect(item,":2/b",data,&size);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",size,data);
+
+	fjsnFree(&item);
+
+	printf("========================================\n");
+	*/
 	
 	return 0;
 }

@@ -430,6 +430,7 @@ int fjsnArrImport(struct tjsnItem **item,char **data)
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
+	mjsnSkip(data,cjsnSpace);
 	(*data)++;
 	while(1)
 	{
@@ -457,6 +458,7 @@ int fjsnArrImport(struct tjsnItem **item,char **data)
 			(*data)++;
 	}
 	(*data)++;
+	mjsnSkip(data,cjsnSpace);
 
 	return 0;
 }
@@ -475,6 +477,7 @@ int fjsnObjImport(struct tjsnItem **item,char **data)
 	result=fjsnInit(item);
 	if(result!=0)
 		return -1;
+	mjsnSkip(data,cjsnSpace);
 	(*data)++;
 	while(1)
 	{
@@ -519,6 +522,7 @@ int fjsnObjImport(struct tjsnItem **item,char **data)
 			(*data)++;
 	}
 	(*data)++;
+	mjsnSkip(data,cjsnSpace);
 
 	return 0;
 }
@@ -534,6 +538,7 @@ int fjsnAllImport(struct tjsnItem **item,char **data)
 {
 	int result;
 
+	mjsnSkip(data,cjsnSpace);
 	switch(**data)
 	{
 		case '[':
@@ -564,6 +569,7 @@ int fjsnAllImport(struct tjsnItem **item,char **data)
 		(*item)->type=cjsnNum;
 		break;
 	}
+	mjsnSkip(data,cjsnSpace);
 
 	return 0;
 }

@@ -83,5 +83,44 @@ int main(void)
 
 	printf("========================================\n");
 
+	/*
+	//测试对象节点解包.
+	strcpy(data," <!-- comment --> <root> <!-- comment --> <a> 1 </a> <b> 2 </b> <c d = \"4\" e = \"5.5555\" > <!-- comment --> </c> <f> 7 </f> <f> 8 </f> </root> ");
+	printf("%s\n",data);
+	size=strlen(data);
+	result=fxmlImport(&item,data,size);
+	if(result!=0)
+		return -1;
+
+	result=fxmlSelect(item,"/root/a",data,&size);
+	if(result!=0)
+		return -1;
+	printf("a:%.*s\n",size,data);
+	result=fxmlSelect(item,"/root/b",data,&size);
+	if(result!=0)
+		return -1;
+	printf("b:%.*s\n",size,data);
+	result=fxmlSelect(item,"/root/c#d",data,&size);
+	if(result!=0)
+		return -1;
+	printf("d:%.*s\n",size,data);
+	result=fxmlSelect(item,"/root/c#e",data,&size);
+	if(result!=0)
+		return -1;
+	printf("e:%.*s\n",size,data);
+	result=fxmlSelect(item,"/root/f:0",data,&size);
+	if(result!=0)
+		return -1;
+	printf("f:%.*s\n",size,data);
+	result=fxmlSelect(item,"/root/f:1",data,&size);
+	if(result!=0)
+		return -1;
+	printf("f:%.*s\n",size,data);
+
+	fxmlFree(&item);
+
+	printf("========================================\n");
+	*/
+
 	return 0;
 }
