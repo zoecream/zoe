@@ -45,3 +45,9 @@ touch:
 	@touch $(MODSOURCE) $(UNTSOURCE) $(INSSOURCE) $(SRVSOURCE)
 clean:
 	@rm -f $(MODTARGET) $(UNTTARGET) $(INSTARGET) $(SRVTARGET)
+
+install:
+	@tar czvf zoe.tgz\
+		profile\
+		srv/zoe\
+		ins/dbs
