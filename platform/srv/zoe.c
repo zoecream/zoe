@@ -19,6 +19,7 @@
 #include <pthread.h>
 
 #include <sys/syscall.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/select.h>
@@ -357,6 +358,13 @@ void fzoeBoot(void)
 		printf("启动业务[%s]\n",vzoeBsnCode);
 
 		char logpath[64];
+		sprintf(logpath,"%s/%s/log",getenv("BUSINESS"),vzoeBsnCode);
+		result=mkdir(logpath,S_IRUSR|S_IWUSR|S_IXUSR);
+		if(result==-1&&errno!=EEXIST)
+		{
+			mlogError("mkdir",errno,strerror(errno),"[%s]",logpath);
+			continue;
+		}
 		sprintf(logpath,"%s/%s/log/%s-zoe.log",getenv("BUSINESS"),vzoeBsnCode,flogDate(0));
 		result=flogMove(2,logpath);
 		if(result==-1)
@@ -370,10 +378,10 @@ void fzoeBoot(void)
 		int lockid;
 		lockid=open(lockpath,O_RDONLY,0600);
 		if(lockid==-1&&errno!=ENOENT)
-		{    
+		{
 			mlogError("open",errno,strerror(errno),"[%s]",lockpath);
 			continue;
-		}    
+		}
 		else
 		if(lockid!=-1)
 		{
@@ -557,6 +565,13 @@ void fzoeShut(void)
 		printf("停止业务[%s]\n",bsncode);
 
 		char logpath[64];
+		sprintf(logpath,"%s/%s/log",getenv("BUSINESS"),bsncode);
+		result=mkdir(logpath,S_IRUSR|S_IWUSR|S_IXUSR);
+		if(result==-1&&errno!=EEXIST)
+		{
+			mlogError("mkdir",errno,strerror(errno),"[%s]",logpath);
+			continue;
+		}
 		sprintf(logpath,"%s/%s/log/%s-zoe.log",getenv("BUSINESS"),bsncode,flogDate(0));
 		result=flogMove(2,logpath);
 		if(result==-1)
@@ -587,11 +602,11 @@ void fzoeShut(void)
 		lock.l_type=F_WRLCK;
 		result=fcntl(lockid,F_SETLK,&lock);
 		if(result==-1&&errno!=EAGAIN)
-		{    
+		{
 			mlogError("fcntl",errno,strerror(errno),"");
 			close(lockid);
 			continue;
-		}    
+		}
 		if(result==-1&&errno==EAGAIN)
 		{
 			printf("操作繁忙中\n");
@@ -693,6 +708,13 @@ void fzoeList(void)
 		printf("显示业务[%s]\n",bsncode);
 
 		char logpath[64];
+		sprintf(logpath,"%s/%s/log",getenv("BUSINESS"),bsncode);
+		result=mkdir(logpath,S_IRUSR|S_IWUSR|S_IXUSR);
+		if(result==-1&&errno!=EEXIST)
+		{
+			mlogError("mkdir",errno,strerror(errno),"[%s]",logpath);
+			continue;
+		}
 		sprintf(logpath,"%s/%s/log/%s-zoe.log",getenv("BUSINESS"),bsncode,flogDate(0));
 		result=flogMove(2,logpath);
 		if(result==-1)
@@ -723,11 +745,11 @@ void fzoeList(void)
 		lock.l_type=F_WRLCK;
 		result=fcntl(lockid,F_SETLK,&lock);
 		if(result==-1&&errno!=EAGAIN)
-		{    
+		{
 			mlogError("fcntl",errno,strerror(errno),"");
 			close(lockid);
 			continue;
-		}    
+		}
 		if(result==-1&&errno==EAGAIN)
 		{
 			printf("操作繁忙中\n");
